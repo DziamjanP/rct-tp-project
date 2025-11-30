@@ -223,21 +223,19 @@ app.MapGet("/traintypes/{id:long}", async (AppDbContext db, long id) =>
     await db.TrainTypes.FindAsync(id) is TrainType u ? Results.Ok(u) : Results.NotFound());
 app.MapPost("/traintypes", async (AppDbContext db, TrainType t) =>
 {
-    // TODO: check priveleges >= 2
     db.TrainTypes.Add(t);
     await db.SaveChangesAsync();
     return Results.Created($"/traintypes/{t.Id}", t);
-});
+}).RequireAuthorization("Admin");
 app.MapDelete("/traintypes/{id:long}", async (AppDbContext db, long id) =>
 {
-    // TODO: check priveleges >= 2
     var t = await db.TrainTypes.FindAsync(id);
     if (t == null) return Results.NotFound();
 
     db.TrainTypes.Remove(t);
     await db.SaveChangesAsync();
     return Results.NoContent();
-});
+}).RequireAuthorization("Admin");
 
 // Trains
 app.MapGet("/trains", async (AppDbContext db) => await db.Trains.Include(t => t.Source).Include(t => t.Destination).Include(t => t.Type).ToListAsync());
@@ -245,33 +243,30 @@ app.MapGet("/trains/{id:long}", async (AppDbContext db, long id) =>
     await db.Trains.FindAsync(id) is Train u ? Results.Ok(u) : Results.NotFound());
 app.MapPost("/trains", async (AppDbContext db, Train t) =>
 {
-    // TODO: check priveleges >= 2
     db.Trains.Add(t);
     await db.SaveChangesAsync();
     return Results.Created($"/trains/{t.Id}", t);
-});
+}).RequireAuthorization("Admin");
 app.MapDelete("/trains/{id:long}", async (AppDbContext db, long id) =>
 {
-    // TODO: check priveleges >= 2
     var t = await db.Trains.FindAsync(id);
     if (t == null) return Results.NotFound();
 
     db.Trains.Remove(t);
     await db.SaveChangesAsync();
     return Results.NoContent();
-});
+}).RequireAuthorization("Admin");
 
 // Price policies
-// TODO: check priveleges >= 2
-app.MapGet("/pricepolicies", async (AppDbContext db) => await db.PricePolicies.ToListAsync());
+app.MapGet("/pricepolicies", async (AppDbContext db) => await db.PricePolicies.ToListAsync()).RequireAuthorization("Admin");
 app.MapGet("/pricepolicies/{id:long}", async (AppDbContext db, long id) =>
-    await db.PricePolicies.FindAsync(id) is PricePolicy u ? Results.Ok(u) : Results.NotFound());
+    await db.PricePolicies.FindAsync(id) is PricePolicy u ? Results.Ok(u) : Results.NotFound()).RequireAuthorization("Admin");
 app.MapPost("/pricepolicies", async (AppDbContext db, PricePolicy p) =>
 {
     db.PricePolicies.Add(p);
     await db.SaveChangesAsync();
     return Results.Created($"/pricepolicies/{p.Id}", p);
-});
+}).RequireAuthorization("Admin");
 app.MapDelete("/pricepolicies/{id:long}", async (AppDbContext db, long id) =>
 {
     var p = await db.PricePolicies.FindAsync(id);
@@ -280,10 +275,9 @@ app.MapDelete("/pricepolicies/{id:long}", async (AppDbContext db, long id) =>
     db.PricePolicies.Remove(p);
     await db.SaveChangesAsync();
     return Results.NoContent();
-});
+}).RequireAuthorization("Admin");
 
 // Perk groups
-// TODO: check priveleges >= 2
 app.MapGet("/perkgroups", async (AppDbContext db) => await db.PerkGroups.ToListAsync());
 app.MapGet("/perkgroups/{id:long}", async (AppDbContext db, long id) =>
     await db.PerkGroups.FindAsync(id) is PerkGroup u ? Results.Ok(u) : Results.NotFound());
@@ -292,7 +286,7 @@ app.MapPost("/perkgroups", async (AppDbContext db, PerkGroup pg) =>
     db.PerkGroups.Add(pg);
     await db.SaveChangesAsync();
     return Results.Created($"/perkgroups/{pg.Id}", pg);
-});
+}).RequireAuthorization("Admin");
 app.MapDelete("/perkgroups/{id:long}", async (AppDbContext db, long id) =>
 {
     var pg = await db.PerkGroups.FindAsync(id);
@@ -301,10 +295,9 @@ app.MapDelete("/perkgroups/{id:long}", async (AppDbContext db, long id) =>
     db.PerkGroups.Remove(pg);
     await db.SaveChangesAsync();
     return Results.NoContent();
-});
+}).RequireAuthorization("Admin");
 
 // Time table entries
-// TODO: check priveleges >= 2
 app.MapGet("/timetable", async (AppDbContext db) => await db.TimeTableEntries.Include(e => e.Train).ToListAsync());
 app.MapGet("/timetable/{id:long}", async (AppDbContext db, long id) =>
     await db.TimeTableEntries.FindAsync(id) is TimeTableEntry u ? Results.Ok(u) : Results.NotFound());
@@ -313,7 +306,7 @@ app.MapPost("/timetable", async (AppDbContext db, TimeTableEntry entry) =>
     db.TimeTableEntries.Add(entry);
     await db.SaveChangesAsync();
     return Results.Created($"/timetable/{entry.Id}", entry);
-});
+}).RequireAuthorization("Admin");
 app.MapDelete("/timetable/{id:long}", async (AppDbContext db, long id) =>
 {
     var e = await db.TimeTableEntries.FindAsync(id);
@@ -322,7 +315,7 @@ app.MapDelete("/timetable/{id:long}", async (AppDbContext db, long id) =>
     db.TimeTableEntries.Remove(e);
     await db.SaveChangesAsync();
     return Results.NoContent();
-});
+}).RequireAuthorization("Admin");
 
 // Tickets
 app.MapGet("/tickets", async (AppDbContext db) => await db.Tickets.ToListAsync());
@@ -368,14 +361,13 @@ app.MapGet("/payments/{id:long}", async (AppDbContext db, long id) =>
 
 app.MapDelete("/payments/{id:long}", async (AppDbContext db, long id) =>
 {
-    // TODO: check priveleges >= 2
     var p = await db.Payments.FindAsync(id);
     if (p == null) return Results.NotFound();
 
     db.Payments.Remove(p);
     await db.SaveChangesAsync();
     return Results.NoContent();
-});
+}).RequireAuthorization("Admin");
 
 
 app.MapPost("/buy/{entryId:long}", async (
@@ -404,11 +396,10 @@ app.MapPost("/buy/{entryId:long}", async (
 });
 
 
-
-app.MapGet("/search", async (
+app.MapGet("/timetable/search", async (
     AppDbContext db,
-    long? fromId,
-    long? toId,
+    long? fromStationId,
+    long? toStationId,
     DateTime? after,
     DateTime? before) =>
 {
@@ -418,30 +409,41 @@ app.MapGet("/search", async (
         join s in db.Stations on t.SourceId equals s.Id
         join d in db.Stations on t.DestinationId equals d.Id
         join tt in db.TrainTypes on t.TypeId equals tt.Id
-
-        select new TimetableSearchDto(
-            e.Id,        // entry id
-            tt.Name,     // train type name
-            s.Name,      // dep name
-            d.Name,      // arr name
-            e.Departure, // dep time
-            e.Arrival    // arr time
-        );
-
-    if (fromId != null)
-        query = query.Where(x => x.Source == fromId.ToString());
-
-    if (toId != null)
-        query = query.Where(x => x.Destination == toId.ToString());
+        select new { e, t, s, d, tt };
 
     if (after != null)
-        query = query.Where(x => x.Departure >= after);
+        after = after.Value.ToUniversalTime();
 
     if (before != null)
-        query = query.Where(x => x.Departure <= before);
+        before = before.Value.ToUniversalTime();
 
-    return Results.Ok(await query.ToListAsync());
+
+    if (fromStationId != null)
+        query = query.Where(x => x.s.Id == fromStationId);
+
+    if (toStationId != null)
+        query = query.Where(x => x.d.Id == toStationId);
+
+    if (after != null)
+        query = query.Where(x => x.e.Departure >= after);
+
+    if (before != null)
+        query = query.Where(x => x.e.Arrival <= before);
+
+    var result = await query
+        .Select(x => new TimetableSearchDto(
+            x.e.Id,
+            x.tt.Name,
+            x.s.Name,
+            x.d.Name,
+            x.e.Departure,
+            x.e.Arrival
+        ))
+        .ToListAsync();
+
+    return Results.Ok(result);
 });
+
 
 app.MapPost("/pay/{lockId:long}", async (
     AppDbContext db,

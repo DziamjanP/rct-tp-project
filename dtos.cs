@@ -6,10 +6,10 @@ namespace CourseProject.Dtos
     public record TimetableSearchDto(
     long EntryId,
     string TrainType,
-    string Source,
-    string Destination,
-    DateTime Departure,
-    DateTime Arrival
+    string DepartureStationName,
+    string ArrivalStationName,
+    DateTime DepartureTime,
+    DateTime ArrivalTime
 );
 
 }

@@ -1,4 +1,15 @@
 <template>
+  <v-alert
+    v-if="errorMessage"
+    type="error"
+    variant="tonal"
+    closable
+    class="mb-4"
+    @click:close="errorMessage = null"
+  >
+    {{ errorMessage }}
+  </v-alert>
+
   <v-container>
 
     <v-row>
@@ -17,6 +28,7 @@
           :headers="['Name', 'City', 'Description']"
           :keys="['name','cityName','description']"
           :defaultModel="{ name:'', cityName:'', description:'' }"
+          @error="showError"
         />
       </v-col>
 
@@ -29,6 +41,7 @@
           :headers="['Name','Description']"
           :keys="['name','description']"
           :defaultModel="{ name:'', description:'' }"
+          @error="showError"
         />
       </v-col>
 
@@ -41,6 +54,7 @@
           :headers="['Name','Discount','Fixed Price']"
           :keys="['name','discount','fixedPrice']"
           :defaultModel="{ name:'', description:'', discount:0, fixedPrice:0 }"
+          @error="showError"
         />
       </v-col>
 
@@ -53,6 +67,7 @@
           :headers="['Per KM','Per Station','Fixed Price']"
           :keys="['pricePerKm','pricePerStation','fixedPrice']"
           :defaultModel="{ pricePerKm:0, pricePerStation:0, fixedPrice:0 }"
+          @error="showError"
         />
       </v-col>
 
@@ -70,6 +85,7 @@
             destinationId: { entity: 'stations', label: s => `${s.name} (${s.cityName})` },
             typeId:        { entity: 'traintypes', label: t => t.name }
           }"
+          @error="showError"
         />
       </v-col>
 
@@ -86,6 +102,7 @@
             trainId: { entity: 'trains', label: t => `Train #${t.id}` }
           }"
           :datetimes="['departure', 'arrival']"
+          @error="showError"
         />
       </v-col>
 
@@ -98,6 +115,7 @@
           :headers="['Name','Phone']"
           :keys="['name','phone']"
           :defaultModel="{ name:'', surname:'', phone:'', password:'', salt:'' }"
+          @error="showError"
         />
       </v-col>
 
@@ -114,6 +132,7 @@
             entryId: { entity: 'timetable', label: e => `#${e.id}: ${e.departure} → ${e.arrival}` },
             userId:  { entity: 'users', label: u => `${u.name} (${u.phone})` }
           }"
+          @error="showError"
         />
       </v-col>
 
@@ -130,6 +149,7 @@
             entryId: { entity: 'timetable', label: e => `#${e.id}` },
             userId:  { entity: 'users', label: u => u.phone }
           }"
+          @error="showError"
         />
       </v-col>
 
@@ -145,6 +165,7 @@
           :fks="{
             lockId: { entity: 'ticketlocks', label: l => `Lock #${l.id}` }
           }"
+          @error="showError"
         />
       </v-col>
 
@@ -156,11 +177,32 @@
 <script setup>
 import router from '@/router';
 import { useAuthStore } from '@/stores/auth';
+import { ref } from 'vue';
+
+const errorMessage = ref(null)
 
 const auth = useAuthStore();
 
 if (!auth.isAdmin) {
   router.push('/');
+}
+
+function showError(err) {
+  console.error(err)
+
+  switch (err.status) {
+    case 401:
+      errorMessage.value = "You are not logged in."
+      break
+
+    case 403:
+      errorMessage.value = "You do not have permission to perform this action."
+      break
+
+    default:
+      errorMessage.value = err.message ?? "Unexpected server error."
+      break
+  }
 }
 
 </script>

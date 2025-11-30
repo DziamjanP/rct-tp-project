@@ -17,7 +17,6 @@
           <tr v-for="item in items" :key="item.id">
             <td v-for="k in keys" :key="k">{{ formatField(k, item[k]) }}</td>
             <td>
-              <!--v-btn small text variant="tonal" @click="$emit('edit', item)">Edit</v-btn-->
               <v-btn small text variant="plain" color="error" @click="removeItem(item.id)">Delete</v-btn>
               <v-btn small text variant="plain" color="primary" @click="goToDetails(item)">View</v-btn>
             </td>
@@ -37,7 +36,6 @@
               :update="updateModel"
             >
 
-              <!-- Auto-generated form -->
               <v-row dense>
 
                 <v-col
@@ -46,7 +44,6 @@
                   cols="12"
                 >
 
-                  <!-- Foreign-key picker -->
                   <v-autocomplete
                     v-if="fks[key]"
                     :label="key"
@@ -59,7 +56,6 @@
                     @update:modelValue="val => updateModel({ [key]: val })"
                   />
 
-                  <!-- DateTime Picker Field -->
                   <v-text-field
                     v-else-if="datetimes.includes(key)"
                     :label="key"
@@ -69,7 +65,6 @@
                     @click="openDateTimePicker(key, model[key])"
                   />
 
-                  <!-- Boolean -->
                   <v-switch
                     v-else-if="typeof value === 'boolean'"
                     :label="key"
@@ -77,7 +72,6 @@
                     @update:modelValue="val => updateModel({ [key]: val })"
                   />
 
-                  <!-- Number -->
                   <v-text-field
                     v-else-if="typeof value === 'number'"
                     type="number"
@@ -86,7 +80,6 @@
                     @update:modelValue="val => updateModel({ [key]: val })"
                   />
 
-                  <!-- String fallback -->
                   <v-text-field
                     v-else
                     :label="key"
@@ -142,6 +135,8 @@ import { ref, toRaw, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '@/api'
 
+const errEmit = defineEmits(['error', 'refresh'])
+
 type ID = string | number
 type AnyObj = Record<string, any>
 
@@ -172,7 +167,7 @@ const props = withDefaults(defineProps<Props>(), {
   datetimes: () => [],
   fks: () => ({}),
 })
-const emit = defineEmits<{ edit: (payload: any) => void }>()
+//const emit = defineEmits<{ edit: (payload: any) => void }>()
 
 const router = useRouter()
 
@@ -193,10 +188,6 @@ const dtKey = ref<string | null>(null)
 const dtDate = ref<string | null>(null)
 const dtTime = ref<string>('12:00')
 
-
-/* ---------------------------
-   Watchers
-----------------------------*/
 watch(showCreate, async (opened) => {
   if (!opened) return
 
@@ -213,13 +204,9 @@ watch(showCreate, async (opened) => {
   }
 })
 
-/* ---------------------------
-   Functions
-----------------------------*/
 function openDateTimePicker(key: string, currentValue?: string | null) {
   dtKey.value = key
 
-  // parse date/time from ISO 'YYYY-MM-DDTHH:MM:SSZ' or similar
   if (currentValue && typeof currentValue === 'string' && currentValue.includes('T')) {
     const parts = currentValue.split('T')
     dtDate.value = parts[0] || null
@@ -233,13 +220,14 @@ function openDateTimePicker(key: string, currentValue?: string | null) {
 }
 
 function saveDateTime() {
+  console.log(dtDate.value);
+  console.log(Date.parse(dtDate.value ?? ""));
+  console.log(new Date(Date.parse(dtDate.value ?? "")).toISOString().slice(0, 10));
   const d = new Date(Date.parse(dtDate.value ?? "")).toISOString().slice(0, 10) ?? new Date().toISOString().slice(0, 10)
   const t = dtTime.value ?? '12:00'
 
-  // convert 2025-07-21 -> 21-07-2025
-  //const [yyyy, mm, dd] = d.split('-')
   const display = `${d} ${t}`
-  const value = `${d}T${t}:00Z`   // server-safe ISO format
+  const value = `${d}T${t}:00Z`
 
   updateModel({
     [dtKey.value as string]: {
@@ -270,17 +258,26 @@ function updateModel(p: AnyObj) {
 }
 
 async function save() {
-  // convert datetimes fields to raw value if wrapper object used
   (props.datetimes || []).forEach((field) => {
     if (model.value[field] && typeof model.value[field] === 'object' && 'value' in model.value[field]) {
       model.value[field] = model.value[field].value
     }
   })
 
-  await api.create(props.entity ?? 'unknown', toRaw(model.value))
+  await createItem(toRaw(model.value))
   showCreate.value = false
   await load()
 }
+
+async function createItem(item: AnyObj) {
+  try {
+    await api.create(props.entity ?? 'unknown', item)
+    errEmit('refresh')
+  } catch (err) {
+    errEmit('error', err)
+  }
+}
+
 
 async function removeItem(id: ID) {
   await api.remove(props.entity ?? 'unknown', id)
@@ -303,8 +300,4 @@ function goToDetails(item: AnyObj) {
 function detailsRoute(item: AnyObj): string {
   return props.detailsBase ? `/${props.detailsBase}/${item.id}` : '/'
 }
-
-/* ---------------------------
-   Expose to template (script setup auto-exposes top-level bindings)
-----------------------------*/
 </script>

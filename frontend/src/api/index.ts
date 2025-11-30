@@ -2,16 +2,6 @@ import axios, { type AxiosResponse, type InternalAxiosRequestConfig } from 'axio
 const BASE = import.meta.env.VITE_API_BASE ?? 'http://localhost:5000'
 const api = axios.create({ baseURL: BASE, headers: { 'Content-Type': 'application/json' } })
 
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token')
-  if (token) {
-    config.headers = config.headers || {}
-    config.headers.Authorization = `Bearer ${token}`
-  }
-  return config
-})
-
-
 api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   const token = localStorage.getItem('token')
 
@@ -22,6 +12,27 @@ api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
 
   return config
 })
+
+api.interceptors.response.use(
+  r => r,
+  error => {
+    const status = error?.response?.status ?? 0
+
+    if (status === 401) {
+      localStorage.removeItem('token')
+      localStorage.removeItem('user')
+      window.location.href = '/login'
+    }
+
+    return Promise.reject({
+      status,
+      message:
+        error.response?.data ??
+        error.message ??
+        'Unexpected error'
+    })
+  }
+)
 
 export interface User {
   id: number | string
@@ -114,9 +125,11 @@ export default {
     return api.get('/timetable', { params }).then(r => r.data)
   },
 
-  /* ---------------------------
-     Price Policy Perks
-  ---------------------------- */
+  searchTimetable(params?: Record<string, unknown>) {
+    return api
+      .get('/timetable/search', { params })
+      .then(res => res.data)
+  },
 
   addPerkToPolicy(
     policyId: ID,
