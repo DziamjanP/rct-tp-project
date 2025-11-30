@@ -1,30 +1,16 @@
-import axios, {
-  type AxiosInstance,
-  type InternalAxiosRequestConfig,
-  type AxiosResponse
-} from 'axios'
+import axios, { type AxiosResponse, type InternalAxiosRequestConfig } from 'axios'
+const BASE = import.meta.env.VITE_API_BASE ?? 'http://localhost:5000'
+const api = axios.create({ baseURL: BASE, headers: { 'Content-Type': 'application/json' } })
 
-/* -------------------------------------------------
-   Environment
--------------------------------------------------- */
-
-const BASE: string =
-  import.meta.env.VITE_API_BASE ?? 'http://localhost:5041'
-
-/* -------------------------------------------------
-   Core Axios Instance
--------------------------------------------------- */
-
-const api: AxiosInstance = axios.create({
-  baseURL: BASE,
-  headers: {
-    'Content-Type': 'application/json'
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token')
+  if (token) {
+    config.headers = config.headers || {}
+    config.headers.Authorization = `Bearer ${token}`
   }
+  return config
 })
 
-/* -------------------------------------------------
-   Interceptor (attach token)
--------------------------------------------------- */
 
 api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   const token = localStorage.getItem('token')
@@ -36,10 +22,6 @@ api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
 
   return config
 })
-
-/* -------------------------------------------------
-   Types
--------------------------------------------------- */
 
 export interface User {
   id: number | string
@@ -61,10 +43,6 @@ export interface LoginInput {
 export type EntityName = string
 export type ID = string | number
 
-/* -------------------------------------------------
-   LocalStorage Helpers
--------------------------------------------------- */
-
 function setToken(token: string): void {
   localStorage.setItem('token', token)
 }
@@ -74,47 +52,11 @@ function getUser(): User | null {
   return raw ? JSON.parse(raw) : null
 }
 
-/* -------------------------------------------------
-   API Object
--------------------------------------------------- */
-
-const ApiService = {
-  /* ---------------------------
-      Auth (prototype)
-  ---------------------------- */
-
-  register<T = RegisterResult>(user: Partial<User>): Promise<T> {
-    return api.post('/users', user).then(r => r.data)
-  },
-
-  async login({ phone, password }: LoginInput): Promise<User> {
-    // Prototype auth: find user client-side (INSECURE)
-    const res: AxiosResponse<User[]> = await api.get('/users')
-
-    const user = res.data.find(
-      u => u.phone === phone && u.password === password
-    )
-
-    if (!user) {
-      throw new Error('Invalid credentials (dev only)')
-    }
-
-    const token = `dev-${user.id}`
-
-    setToken(token)
-    localStorage.setItem('user', JSON.stringify(user))
-
-    return user
-  },
-
-  logout(): void {
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
-  },
-
-  getCurrentUser(): User | null {
-    return getUser()
-  },
+export default {
+  // Auth
+  register(payload: Record<string, any>) { return api.post('/auth/register', payload).then(r => r.data) },
+  login(payload: { phone: string; password: string }) { return api.post('/auth/login', payload).then(r => r.data) },
+  logout() { localStorage.removeItem('token'); localStorage.removeItem('user') },
 
   /* ---------------------------
      Generic Entity Helpers
@@ -192,5 +134,3 @@ const ApiService = {
       .then(() => undefined)
   }
 }
-
-export default ApiService

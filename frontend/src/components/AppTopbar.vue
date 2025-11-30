@@ -8,8 +8,6 @@
         Ticket service
       </v-toolbar-title>
 
-      <v-spacer />
-
       <!-- Top Nav Buttons -->
       <v-btn
         v-for="item in items"
@@ -24,13 +22,23 @@
   </v-app-bar>
 </template>
 <script lang="ts" setup>
-  const items = [
+  import { useAuthStore } from '@/stores/auth';
+  const auth = useAuthStore()
+
+  const items = computed(() => auth.isAuthenticated ? (auth.isAdmin ? [
+    { to: '/', title: 'Home'},
+    { to: '/admin', title: 'Admin'},
+    { to: '/timetable', title: 'Timetable'},
+    { to: '/tickets', title: 'My tickets'},
+  ] : [
+    { to: '/', title: 'Home'},
+    { to: '/admin', title: 'Admin'},
+    { to: '/timetable', title: 'Timetable'},
+    { to: '/tickets', title: 'My tickets'},
+  ]) : [
     { to: '/', title: 'Home'},
     { to: '/login', title: 'Login'},
     { to: '/register', title: 'Register'},
-    { to: '/admin', title: 'Admin'},
     { to: '/timetable', title: 'Timetable'},
-    { to: '/buy/:entryId', title: 'BuyTicket'},
-    { to: '/details/:type/:id', title: 'Details' },
-  ];
+  ]);
 </script>

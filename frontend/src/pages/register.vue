@@ -17,7 +17,8 @@
             </v-col>
           </v-row>
 
-          <v-alert v-if="message" type="success" class="mt-4">{{ message }}</v-alert>
+          <v-alert v-if="error" type="error" class="mt-4">{{ error}}</v-alert>
+          <v-alert v-if="message" type="info" class="mt-4">{{ message }}</v-alert>
         </v-card>
       </v-col>
     </v-row>
@@ -26,24 +27,29 @@
 
 <script setup>
 import { ref } from 'vue'
-import api from '@/api'
+import { useAuthStore } from '@/stores/auth'
 import { useRouter } from 'vue-router'
+
+const auth = useAuthStore();
 
 const name = ref('')
 const surname = ref('')
 const phone = ref('')
 const password = ref('')
 const message = ref('')
+const error = ref('')
 const router = useRouter()
 
 async function submit() {
   try {
-    const payload = { name: name.value, surname: surname.value, phone: phone.value, password: password.value, salt: '' }
-    await api.create('users', payload)
-    message.value = 'Registered. You can login now.'
-    setTimeout(() => router.push('/login'), 800)
+    error.value = ''
+    const payload = { name: name.value, surname: surname.value, phone: phone.value, password: password.value }
+    await auth.register(payload)
+    message.value = 'Registered, redirecting you now...'
+    router.push('/');
   } catch (e) {
-    message.value = `Error: ${e.message ?? e}`
+    message.value = ''
+    error.value = `Error: ${e.message ?? e}`
   }
 }
 </script>

@@ -64,7 +64,7 @@
                     v-else-if="datetimes.includes(key)"
                     :label="key"
                     readonly
-                    :model-value="model[key]"
+                    :model-value="model[key].display"
                     prepend-inner-icon="mdi-calendar-clock"
                     @click="openDateTimePicker(key, model[key])"
                   />
@@ -137,116 +137,174 @@
     </v-card>
   </v-dialog>
 </template>
-
-<script setup>
-import { ref, toRaw } from 'vue'
-import api from '@/api'
+<script setup lang="ts">
+import { ref, toRaw, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import api from '@/api'
+
+type ID = string | number
+type AnyObj = Record<string, any>
+
+interface FkConfig {
+  entity: string
+  label?: (item: AnyObj) => string
+  [key: string]: any
+}
+
+interface Props {
+  entity?: string
+  title?: string
+  headers?: any[]
+  keys?: string[]
+  createTitle?: string
+  defaultModel?: Record<string, any>
+  detailsBase?: string | null
+  datetimes?: string[]
+  fks?: Record<string, FkConfig>
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  headers: () => [],
+  keys: () => [],
+  createTitle: 'Create',
+  defaultModel: () => ({}),
+  detailsBase: null,
+  datetimes: () => [],
+  fks: () => ({}),
+})
+const emit = defineEmits<{ edit: (payload: any) => void }>()
+
 const router = useRouter()
 
-const fkOptions = ref({})
+const fkOptions = ref<Record<string, unknown[]>>({})
 
-async function loadFk(key, config) {
+async function loadFk(key: string, config: FkConfig) {
   if (fkOptions.value[key]) return
   const data = await api.list(config.entity)
   fkOptions.value[key] = data
 }
 
-const props = defineProps({
-  entity: String,
-  title: String,
-  headers: Array,
-  keys: Array,
-  createTitle: { type: String, default: 'Create' },
-  defaultModel: { type: Object, default: () => ({}) },
-  detailsBase: { type: String, default: null },
-  datetimes: {
-    type: Array,
-    default: () => []
-  },
-  fks: {
-    type: Object,
-    default: () => ({})
-  },
-})
+const items = ref<AnyObj[]>([])
+const showCreate = ref<boolean>(false)
+const model = ref<AnyObj>({ ...props.defaultModel })
 
-const emit = defineEmits(['edit'])
-const items = ref([])
-const showCreate = ref(false)
-const model = ref({ ...props.defaultModel })
+const dtDialog = ref<boolean>(false)
+const dtKey = ref<string | null>(null)
+const dtDate = ref<string | null>(null)
+const dtTime = ref<string>('12:00')
 
-watch(showCreate, async opened => {
+
+/* ---------------------------
+   Watchers
+----------------------------*/
+watch(showCreate, async (opened) => {
   if (!opened) return
 
-  for (const [key, cfg] of Object.entries(props.fks)) {
-    // decorate option items with labels
+  // load fk options and decorate with __label
+  for (const [key, cfg] of Object.entries(props.fks || {})) {
     await loadFk(key, cfg)
 
-    fkOptions.value[key] =
-      fkOptions.value[key]
-        .map(item => ({
-          ...item,
-          __label: cfg.label ? cfg.label(item) : `#${item.id}`
-        }))
+    const list = fkOptions.value[key] as AnyObj[]
+
+    fkOptions.value[key] = list.map(item => ({
+      ...item,
+      __label: cfg.label ? cfg.label(item) : `#${item.id}`,
+    }))
   }
 })
 
-const dtDialog = ref(false)
-const dtKey = ref(null)
-const dtDate = ref(null)
-const dtTime = ref('12:00')
-
-function openDateTimePicker(key, currentValue) {
+/* ---------------------------
+   Functions
+----------------------------*/
+function openDateTimePicker(key: string, currentValue?: string | null) {
   dtKey.value = key
-  dtDate.value = currentValue.length > 0 ? currentValue.split('T')[0] : new Date().toISOString().slice(0,10)
-  dtTime.value = currentValue?.split?.('T')?.[1]?.substring(0,5) ?? '12:00'
+
+  // parse date/time from ISO 'YYYY-MM-DDTHH:MM:SSZ' or similar
+  if (currentValue && typeof currentValue === 'string' && currentValue.includes('T')) {
+    const parts = currentValue.split('T')
+    dtDate.value = parts[0] || null
+    dtTime.value = parts[1]?.substring(0, 5) ?? '12:00'
+  } else {
+    dtDate.value = new Date().toISOString().slice(0, 10)
+    dtTime.value = '12:00'
+  }
+
   dtDialog.value = true
 }
 
 function saveDateTime() {
-  const value = `${dtDate.value}T${dtTime.value}:00Z`
-  updateModel({ [dtKey.value]: value })
+  const d = new Date(Date.parse(dtDate.value ?? "")).toISOString().slice(0, 10) ?? new Date().toISOString().slice(0, 10)
+  const t = dtTime.value ?? '12:00'
+
+  // convert 2025-07-21 -> 21-07-2025
+  //const [yyyy, mm, dd] = d.split('-')
+  const display = `${d} ${t}`
+  const value = `${d}T${t}:00Z`   // server-safe ISO format
+
+  updateModel({
+    [dtKey.value as string]: {
+      display,
+      value,
+    },
+  })
+
   dtDialog.value = false
 }
 
 async function load() {
-  items.value = await api.list(props.entity ?? "unknown")
+  const ent = props.entity ?? 'unknown'
+  items.value = await api.list(ent)
 }
-load()
+
+onMounted(() => {
+  load()
+})
 
 function openCreate() {
-  model.value = { ...props.defaultModel }
+  model.value = { ...(props.defaultModel ?? {}) }
   showCreate.value = true
 }
 
-function updateModel(p) {
+function updateModel(p: AnyObj) {
   model.value = { ...model.value, ...p }
 }
 
 async function save() {
-  await api.create(props.entity ?? "unknown", toRaw(model.value))
+  // convert datetimes fields to raw value if wrapper object used
+  (props.datetimes || []).forEach((field) => {
+    if (model.value[field] && typeof model.value[field] === 'object' && 'value' in model.value[field]) {
+      model.value[field] = model.value[field].value
+    }
+  })
+
+  await api.create(props.entity ?? 'unknown', toRaw(model.value))
   showCreate.value = false
   await load()
 }
 
-async function removeItem(id) {
-  await api.remove(props.entity ?? "unknown", id)
+async function removeItem(id: ID) {
+  await api.remove(props.entity ?? 'unknown', id)
   await load()
 }
 
-function formatField(field, val){
-  if (field.toLowerCase() == 'description') {
-    return `${val.substring(0, 16)}...`;
+function formatField(field: string, val: any) {
+  if (!val || typeof val !== 'string') return val
+  if (field.toLowerCase() === 'description') {
+    return `${val.substring(0, 16)}...`
   }
-  return val;
+  return val
 }
 
-function goToDetails(item) {
+function goToDetails(item: AnyObj) {
   const base = props.detailsBase ?? props.entity
-  router.push(`/details/${encodeURIComponent(base)}/${encodeURIComponent(item.id)}`)
+  router.push(`/details/${encodeURIComponent(base ?? '')}/${encodeURIComponent(String(item.id))}`)
 }
 
-function detailsRoute(item) {
+function detailsRoute(item: AnyObj): string {
   return props.detailsBase ? `/${props.detailsBase}/${item.id}` : '/'
 }
+
+/* ---------------------------
+   Expose to template (script setup auto-exposes top-level bindings)
+----------------------------*/
 </script>

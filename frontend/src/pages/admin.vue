@@ -8,7 +8,6 @@
     </v-row>
 
     <v-row>
-
       <!-- Stations -->
       <v-col cols="12" md="6">
         <EntityEditor
@@ -155,5 +154,13 @@
 </template>
 
 <script setup>
-import EntityEditor from '@/components/EntityEditor.vue'
+import router from '@/router';
+import { useAuthStore } from '@/stores/auth';
+
+const auth = useAuthStore();
+
+if (!auth.isAdmin) {
+  router.push('/');
+}
+
 </script>
