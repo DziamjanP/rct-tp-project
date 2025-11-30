@@ -8,6 +8,7 @@ public class TicketLock
     public string? InvoiceId { get; set; }
     public bool Paid { get; set; }
     public decimal? Sum { get; set; }
+    public DateTime CreatedAt { get; set; }
 
     public TimeTableEntry? Entry { get; set; }
     public User? User { get; set; }

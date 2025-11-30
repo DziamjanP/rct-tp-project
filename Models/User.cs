@@ -12,6 +12,7 @@ public class User
     public string? Passport { get; set; }
     public string? Name { get; set; }
     public string? Surname { get; set; }
+    public int AccessLevel { get; set; } = 0;
     [JsonIgnore]
     public ICollection<Ticket>? Tickets { get; set; }
     [JsonIgnore]

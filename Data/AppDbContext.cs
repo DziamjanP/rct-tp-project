@@ -29,8 +29,8 @@ public class AppDbContext : DbContext
         {
             eb.HasKey(u => u.Id);
             eb.Property(u => u.Password).HasMaxLength(64).IsRequired();
-            eb.Property(u => u.Salt).HasMaxLength(16).IsRequired();
-            eb.Property(u => u.Phone).HasMaxLength(36);
+            eb.Property(u => u.Salt).HasMaxLength(29).IsRequired();
+            eb.Property(u => u.Phone).HasMaxLength(36).IsRequired();
             eb.Property(u => u.Passport).HasMaxLength(9);
             eb.Property(u => u.Name).HasMaxLength(64);
             eb.Property(u => u.Surname).HasMaxLength(64);
