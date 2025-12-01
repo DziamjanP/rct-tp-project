@@ -7,18 +7,16 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using System.Linq;
 
 var builder = WebApplication.CreateBuilder(args);
 var conn = builder.Configuration.GetConnectionString("DefaultConnection") 
            ?? throw new InvalidOperationException("Missing DefaultConnection");
 
-// Add JwtService
-builder.Services.AddSingleton<JwtService>();
-
-// Add DbContext (already present in your app). Example:
 builder.Services.AddDbContext<AppDbContext>(opt => opt.UseNpgsql(conn));
 
-// Configure authentication: JWT Bearer
+builder.Services.AddSingleton<JwtService>();
+
 var jwtKey = builder.Configuration["Jwt:Key"] ?? throw new InvalidOperationException("Missing Jwt:Key");
 var jwtIssuer = builder.Configuration["Jwt:Issuer"];
 var jwtAudience = builder.Configuration["Jwt:Audience"];
@@ -64,16 +62,17 @@ builder.Services.AddAuthorizationBuilder()
         })
 );
 
-// for basic OpenAPI convenience in dev (optional)
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddOpenApi();
 
 builder.Services.AddHostedService<ExpiredLockCleanup>();
+builder.Services.AddScoped<IStationDistanceCalculator, StationDistanceCalculator>();
+builder.Services.AddScoped<ITicketPricingService, TicketPricingService>();
 
 string[] devOrigins =
 {
-    "http://localhost:5173",  // Vite
-    "http://localhost:3000"   // optional other tools
+    "http://localhost:5173",
+    "http://localhost:3000"
 };
 
 builder.Services.AddCors(options =>
@@ -106,7 +105,7 @@ app.UseAuthorization();
 app.MapControllers();
 
 
-// auto-migrate in Development for prototype convenience ONLY
+// automigrate in dev
 using (var scope = app.Services.CreateScope())
 {
     var env = scope.ServiceProvider.GetRequiredService<IHostEnvironment>();
@@ -130,10 +129,8 @@ if (app.Environment.IsDevelopment())
 app.MapGet("/health", () => Results.Ok("OK"));
 
 
-// ---------- AUTH endpoints ----------
 app.MapPost("/auth/register", async (AppDbContext db, JwtService jwt, RegisterDto dto) =>
 {
-    // minimal validation
     if (string.IsNullOrWhiteSpace(dto.Phone) || string.IsNullOrWhiteSpace(dto.Password))
         return Results.BadRequest("Phone and Password are required.");
 
@@ -201,14 +198,13 @@ app.MapGet("/stations/{id:long}", async (AppDbContext db, long id) =>
     await db.Stations.FindAsync(id) is Station u ? Results.Ok(u) : Results.NotFound());
 app.MapPost("/stations", async (AppDbContext db, Station s) =>
 {
-    // TODO: check priveleges >= 2
     db.Stations.Add(s);
     await db.SaveChangesAsync();
     return Results.Created($"/stations/{s.Id}", s);
 }).RequireAuthorization("Admin");
 app.MapDelete("/stations/{id:long}", async (AppDbContext db, long id) =>
 {
-    // TODO: check priveleges >= 2
+
     var s = await db.Stations.FindAsync(id);
     if (s == null) return Results.NotFound();
 
@@ -299,8 +295,34 @@ app.MapDelete("/perkgroups/{id:long}", async (AppDbContext db, long id) =>
 
 // Time table entries
 app.MapGet("/timetable", async (AppDbContext db) => await db.TimeTableEntries.Include(e => e.Train).ToListAsync());
-app.MapGet("/timetable/{id:long}", async (AppDbContext db, long id) =>
-    await db.TimeTableEntries.FindAsync(id) is TimeTableEntry u ? Results.Ok(u) : Results.NotFound());
+app.MapGet("/timetable/{id:long}", async (
+    AppDbContext db,
+    long id) =>
+{
+    var query =
+        from e in db.TimeTableEntries
+        join t in db.Trains on e.TrainId equals t.Id
+        join s in db.Stations on t.SourceId equals s.Id
+        join d in db.Stations on t.DestinationId equals d.Id
+        join tt in db.TrainTypes on t.TypeId equals tt.Id
+        select new { e, t, s, d, tt };
+
+    query = query.Where(x => x.e.Id == id);
+
+    var result = await query
+        .Select(x => new TimetableSearchDto(
+            x.e.Id,
+            x.t.Id,
+            x.tt.Name,
+            x.s.Name,
+            x.d.Name,
+            x.e.Departure,
+            x.e.Arrival
+        ))
+        .FirstAsync();
+
+    return Results.Ok(result);
+});
 app.MapPost("/timetable", async (AppDbContext db, TimeTableEntry entry) =>
 {
     db.TimeTableEntries.Add(entry);
@@ -323,14 +345,12 @@ app.MapGet("/tickets/{id:long}", async (AppDbContext db, long id) =>
     await db.Tickets.FindAsync(id) is Ticket u ? Results.Ok(u) : Results.NotFound());
 app.MapPost("/tickets", async (AppDbContext db, Ticket t) =>
 {
-    // TODO: check priveleges >= 1
     db.Tickets.Add(t);
     await db.SaveChangesAsync();
     return Results.Created($"/tickets/{t.Id}", t);
 }).RequireAuthorization("Support");
 app.MapDelete("/tickets/{id:long}", async (AppDbContext db, long id) =>
 {
-    // TODO: check priveleges >= 1
     var t = await db.Tickets.FindAsync(id);
     if (t == null) return Results.NotFound();
 
@@ -372,12 +392,24 @@ app.MapDelete("/payments/{id:long}", async (AppDbContext db, long id) =>
 
 app.MapPost("/buy/{entryId:long}", async (
     AppDbContext db,
+    ITicketPricingService pricingService,
+    long? perkGroupId,
     long entryId,
     long userId
 ) =>
 {
     var entry = await db.TimeTableEntries.FindAsync(entryId);
     if (entry == null) return Results.NotFound();
+
+    var policy = entry.PricePolicy;
+    if (policy == null) return Results.NotFound();
+
+    var selectedPerk = await db.PricePolicyPerkGroups.FindAsync(perkGroupId);
+    if (selectedPerk == null) return Results.NotFound();
+
+    if (!policy.PerkGroups.Contains(selectedPerk)) return Results.BadRequest();
+
+    var price = pricingService.CalculateTicketPrice(policy, entry.Train.SourceId, entry.Train.DestinationId, selectedPerk.PerkGroup);
 
     var lockRow = new TicketLock
     {
@@ -386,7 +418,7 @@ app.MapPost("/buy/{entryId:long}", async (
         Paid = false,
         CreatedAt = DateTime.UtcNow,
         InvoiceId = Guid.NewGuid().ToString(), // simulating invoice id
-        Sum = 10   // TODO: compute via policies
+        Sum = price
     };
 
     db.TicketLocks.Add(lockRow);
@@ -433,6 +465,7 @@ app.MapGet("/timetable/search", async (
     var result = await query
         .Select(x => new TimetableSearchDto(
             x.e.Id,
+            x.t.Id,
             x.tt.Name,
             x.s.Name,
             x.d.Name,

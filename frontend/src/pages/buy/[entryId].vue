@@ -1,76 +1,197 @@
 <template>
-  <v-container>
-    <v-row>
-      <v-col cols="12" md="8">
-        <v-card class="pa-4">
-          <div class="text-h5 mb-2">Buy ticket for entry {{ entryId }}</div>
+  <v-container class="pa-4">
+    <v-card class="pa-4" v-if="entry">
 
-          <v-text-field v-model="userId" label="Your user id" />
-          <v-text-field v-model="invoiceId" label="Invoice id (optional)" />
-          <v-text-field v-model="sum" label="Amount" type="number" />
+      <!-- Timetable & Train Info -->
+      <v-row>
+        <v-col cols="12">
+          <h2>Lock Ticket for Train {{ entry?.trainId }}</h2>
+          <p><strong>Departure:</strong> {{ formatDateTime(entry?.departureTime ?? Date.now().toString()) }}</p>
+          <p><strong>Arrival:</strong> {{ formatDateTime(entry?.arrivalTime ?? Date.now().toString()) }}</p>
+          <p><strong>From:</strong> {{ entry?.train.sourceId }}</p>
+          <p><strong>To:</strong> {{ entry?.train.destinationId }}</p>
+        </v-col>
+      </v-row>
 
-          <v-btn color="primary" @click="reserve">Reserve (create lock)</v-btn>
+      <!-- Stops -->
+      <!--v-row v-if="entry?.stops?.length">
+        <v-col cols="12">
+          <h3>Stops</h3>
+          <v-list dense>
+            <v-list-item v-for="stop in entry.stops" :key="stop.id">
+              <v-list-item-title>{{ stop.station.name }}</v-list-item-title>
+              <v-list-item-subtitle>
+                Arrival: {{ formatTime(stop.arrivalTime) }},
+                Departure: {{ formatTime(stop.departureTime) }}
+              </v-list-item-subtitle>
+            </v-list-item>
+          </v-list>
+        </v-col>
+      </v-row-->
 
-          <v-alert v-if="message" class="mt-3">{{ message }}</v-alert>
+      <!-- Perk group selection -->
+      <v-row v-if="entry?.perkGroups?.length">
+        <v-col cols="12" md="6">
+          <v-autocomplete
+            v-model="selectedPerkGroup"
+            :items="entry.perkGroups"
+            item-title="name"
+            item-value="id"
+            label="Select Perk Group"
+            clearable
+          />
+        </v-col>
+      </v-row>
 
-          <div v-if="lock">
-            <div class="mt-3">Lock created: {{ lock.id }}</div>
-            <v-btn color="success" class="mt-2" @click="pay">Simulate Pay & Confirm</v-btn>
-          </div>
+      <!-- Lock Ticket Button -->
+      <v-row>
+        <v-col cols="12">
+          <v-btn
+            color="primary"
+            :loading="loading"
+            @click="lockTicket"
+          >
+            Lock Ticket
+          </v-btn>
+        </v-col>
+      </v-row>
 
-        </v-card>
-      </v-col>
-    </v-row>
+    </v-card>
+    <v-card v-else>
+      Something went wrong
+    </v-card>
+
+    <!-- Success Dialog -->
+    <v-dialog v-model="successDialog" max-width="400">
+      <v-card>
+        <v-card-title class="headline">Ticket Locked!</v-card-title>
+        <v-card-text>
+          Your ticket has been successfully locked.
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn color="primary" @click="goToTickets">OK</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
   </v-container>
 </template>
 
-<script setup>
-import { ref } from 'vue'
-import api from '@/api'
-import { useRoute, useRouter } from 'vue-router'
+<script setup lang="ts">
+import { ref, onMounted } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import api from '@/api';
+import { useAuthStore } from '@/stores/auth';
 
-const route = useRoute()
-const router = useRouter()
-const entryId = route.params.entryId
-const userId = ref('')
-const invoiceId = ref('')
-const sum = ref(0)
-const message = ref('')
-const lock = ref(null)
+const auth = useAuthStore();
 
-async function reserve() {
-  message.value = ''
-  try {
-    const payload = {
-      entryId: Number(entryId),
-      userId: Number(userId.value),
-      invoiceId: invoiceId.value || null,
-      paid: false,
-      sum: Number(sum.value)
-    }
-    const l = await api.createTicketLock(payload)
-    lock.value = l
-    message.value = 'Lock created. Proceed to pay.'
-  } catch (e) {
-    message.value = 'Error creating lock: ' + (e.message ?? e)
+interface Stop {
+  id: number
+  station: { name: string }
+  arrivalTime: string
+  departureTime: string
+}
+
+interface PerkGroup {
+  id: number
+  name: string
+}
+
+interface Entry {
+  id: number
+  departureStationName: string
+  arrivalStationName: string 
+  departureTime: string
+  arrivalTime: string
+  perkGroups?: PerkGroup[]
+  trainId: number
+  train: {
+    id: number,
+    sourceId: number,
+    destinationId: number,
+    typeId: number,
+    stops?: Stop[]
   }
 }
 
-async function pay() {
-  try {
-    const payment = {
-      lockId: lock.value.id,
-      invoiceId: lock.value.invoiceId,
-      successful: true,
-      sum: lock.value.sum
+interface TimeTableResponse {
+  entryId: number
+  trainId: number
+  trainType: string
+  departureStationName: string
+  arrivalStationName: string
+  departureTime: string
+  arrivalTime: string
+}
+
+const route = useRoute("/buy/[entryId]")
+const router = useRouter()
+
+const entry = ref<Entry | null>(null)
+const selectedPerkGroup = ref<number | null>(null)
+const loading = ref(false)
+const successDialog = ref(false)
+
+const entryId = route.params.entryId as string
+
+console.log(entryId);
+
+onMounted(async () => {
+  let ttEntry: TimeTableResponse = await api.get('timetable', entryId)
+  if (ttEntry) {
+    entry.value = {
+      id: ttEntry.entryId,
+      departureStationName: ttEntry.departureStationName,
+      arrivalStationName: ttEntry.arrivalStationName,
+      departureTime: ttEntry.departureTime,
+      arrivalTime: ttEntry.arrivalTime,
+      trainId: ttEntry.trainId,
+      train: await api.get('trains', ttEntry.trainId)
     }
-    const p = await api.createPayment({ ...payment, dateTime: new Date().toISOString() })
-    // create actual ticket after successful payment
-    const t = await api.createTicket({ entryId: Number(entryId), userId: Number(userId.value), used: false })
-    message.value = `Payment done. Ticket created with id ${t.id}`
-    setTimeout(() => router.push('/tickets'), 800)
-  } catch (e) {
-    message.value = 'Error making payment: ' + (e.message ?? e)
   }
+  console.log(entry);
+})
+
+function formatDateTime(dt: string) {
+  const d = new Date(dt)
+  const day = String(d.getDate()).padStart(2, '0')
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const year = d.getFullYear()
+  const hours = String(d.getHours()).padStart(2, '0')
+  const minutes = String(d.getMinutes()).padStart(2, '0')
+  return `${day}-${month}-${year} ${hours}:${minutes}`
+}
+
+function formatTime(dt: string) {
+  const d = new Date(dt)
+  const hours = String(d.getHours()).padStart(2, '0')
+  const minutes = String(d.getMinutes()).padStart(2, '0')
+  return `${hours}:${minutes}`
+}
+
+async function lockTicket() {
+  if (!entry.value) return
+  loading.value = true
+  try {
+    const payload: any = {
+      entryId: entry.value.id,
+      userId: auth.user?.id,
+    }
+    if (selectedPerkGroup.value) payload.perkGroupId = selectedPerkGroup.value
+    await api.create(`/buy/${entry.value.id}`, payload)
+
+    successDialog.value = true
+  } catch (err) {
+    console.error(err)
+    alert('Failed to lock ticket')
+  } finally {
+    loading.value = false
+  }
+}
+
+function goToTickets() {
+  successDialog.value = false
+  router.push('/tickets')
 }
 </script>

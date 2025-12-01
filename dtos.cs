@@ -5,6 +5,7 @@ namespace CourseProject.Dtos
     public record AuthResponseDto(string Token, long UserId, int AccessLevel, string Name, string? Surname, string? Password, string? Phone);
     public record TimetableSearchDto(
     long EntryId,
+    long TrainId,
     string TrainType,
     string DepartureStationName,
     string ArrivalStationName,
