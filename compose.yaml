@@ -1,0 +1,12 @@
+services:
+  db:
+    image: postgres:17-alpine3.22
+    environment:
+      POSTGRES_USER: ticket_service
+      POSTGRES_PASSWORD: abab7878
+      POSTGRES_DB: ticket_service
+      PGDATA: "/var/lib/postgresql/data/pgdata"
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./.pgdata:/var/lib/postgresql/data
