@@ -10,7 +10,7 @@ public class TimeTableEntry
     public DateTime Departure { get; set; }
     public DateTime Arrival { get; set; }
 
-    // store stop info as JSONB; EF Core with Npgsql will map JsonDocument to jsonb
+    // temporary, will add M:N in future
     public JsonDocument? StopInfo { get; set; }
 
     public long? PricePolicyId { get; set; }

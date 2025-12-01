@@ -14,8 +14,8 @@ public class JwtService
     public string GenerateToken(long userId, int accessLevel, string? name, string? phone)
     {
         var key = _cfg["Jwt:Key"] ?? throw new InvalidOperationException("Missing Jwt:Key");
-        var issuer = _cfg["Jwt:Issuer"] ?? "course_project";
-        var audience = _cfg["Jwt:Audience"] ?? "course_project_ui";
+        var issuer = _cfg["Jwt:Issuer"] ?? "ticket_service_backend";
+        var audience = _cfg["Jwt:Audience"] ?? "ticket_service_frontend";
         var expiryMinutes = int.TryParse(_cfg["Jwt:ExpiryMinutes"], out var m) ? m : 60;
 
         var claims = new List<Claim>

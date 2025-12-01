@@ -64,14 +64,9 @@ function getUser(): User | null {
 }
 
 export default {
-  // Auth
   register(payload: Record<string, any>) { return api.post('/auth/register', payload).then(r => r.data) },
   login(payload: { phone: string; password: string }) { return api.post('/auth/login', payload).then(r => r.data) },
   logout() { localStorage.removeItem('token'); localStorage.removeItem('user') },
-
-  /* ---------------------------
-     Generic Entity Helpers
-  ---------------------------- */
 
   list<T = unknown>(entity: EntityName): Promise<T[]> {
     return api.get(`/${entity}`).then(r => r.data)
@@ -93,7 +88,6 @@ export default {
     id: ID,
     payload: P
   ): Promise<T> {
-    // supports fallback for servers without PUT
     if (api.put) {
       return api.put(`/${entity}/${id}`, payload).then(r => r.data)
     }
@@ -104,10 +98,6 @@ export default {
   remove<T = unknown>(entity: EntityName, id: ID): Promise<T> {
     return api.delete(`/${entity}/${id}`).then(r => r.data)
   },
-
-  /* ---------------------------
-     Ticket Workflows
-  ---------------------------- */
 
   createTicket<T = unknown, P = unknown>(payload: P): Promise<T> {
     return api.post('/tickets', payload).then(r => r.data)
