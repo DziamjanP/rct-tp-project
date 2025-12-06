@@ -68,8 +68,8 @@ export default {
   login(payload: { phone: string; password: string }) { return api.post('/auth/login', payload).then(r => r.data) },
   logout() { localStorage.removeItem('token'); localStorage.removeItem('user') },
 
-  list<T = unknown>(entity: EntityName): Promise<T[]> {
-    return api.get(`/${entity}`).then(r => r.data)
+  list<T = unknown>(entity: EntityName, params?: Record<string, any>): Promise<T[]> {
+    return api.get(`/${entity}`, { params }).then(r => r.data)
   },
 
   get<T = unknown>(entity: EntityName, id: ID): Promise<T> {

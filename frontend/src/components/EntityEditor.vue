@@ -3,7 +3,18 @@
     <v-card class="pa-4 mb-4">
       <div class="d-flex justify-space-between align-center">
         <div class="text-h6">{{ title }}</div>
-        <v-btn color="primary" @click="openCreate">Add</v-btn>
+        <div class="d-flex align-center">
+          <v-checkbox
+            v-if="inactiveSwitch"
+            label="Hide inactive"
+            v-model="hideInactive"
+            @update:modelValue="load"
+            hide-details
+            density="compact"
+            class="mr-2 mt-0 mb-0"
+          ></v-checkbox>
+          <v-btn color="primary" @click="openCreate">Add</v-btn>
+        </div>
       </div>
 
       <v-table class="mt-4">
@@ -156,6 +167,7 @@ interface Props {
   detailsBase?: string | null
   datetimes?: string[]
   fks?: Record<string, FkConfig>
+  inactiveSwitch?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -166,6 +178,7 @@ const props = withDefaults(defineProps<Props>(), {
   detailsBase: null,
   datetimes: () => [],
   fks: () => ({}),
+  inactiveSwitch: false,
 })
 //const emit = defineEmits<{ edit: (payload: any) => void }>()
 
@@ -178,6 +191,8 @@ async function loadFk(key: string, config: FkConfig) {
   const data = await api.list(config.entity)
   fkOptions.value[key] = data
 }
+
+const hideInactive = ref(false)
 
 const items = ref<AnyObj[]>([])
 const showCreate = ref<boolean>(false)
@@ -241,7 +256,7 @@ function saveDateTime() {
 
 async function load() {
   const ent = props.entity ?? 'unknown'
-  items.value = await api.list(ent)
+  items.value = hideInactive.value ? await api.list(ent, { "after":  new Date().toISOString() }) : await api.list(ent)
 }
 
 onMounted(() => {

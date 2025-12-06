@@ -294,7 +294,20 @@ app.MapDelete("/perkgroups/{id:long}", async (AppDbContext db, long id) =>
 }).RequireAuthorization("Admin");
 
 // Time table entries
-app.MapGet("/timetable", async (AppDbContext db) => await db.TimeTableEntries.Include(e => e.Train).ToListAsync());
+app.MapGet("/timetable", async (DateTime? after, AppDbContext db) =>
+{
+    var query = db.TimeTableEntries
+        .Include(e => e.Train)
+        .AsQueryable();
+
+    if (after.HasValue)
+        query = query.Where(e => e.Departure >= after.Value);
+
+    return await query
+        .OrderBy(e => e.Departure)
+        .ToListAsync();
+});
+
 app.MapGet("/timetable/{id:long}", async (
     AppDbContext db,
     long id) =>

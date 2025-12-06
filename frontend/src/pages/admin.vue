@@ -19,7 +19,7 @@
     </v-row>
 
     <v-row>
-      <!-- Stations -->
+
       <v-col cols="12" md="6">
         <EntityEditor
           entity="stations"
@@ -32,7 +32,6 @@
         />
       </v-col>
 
-      <!-- Train Types -->
       <v-col cols="12" md="6">
         <EntityEditor
           entity="traintypes"
@@ -45,7 +44,6 @@
         />
       </v-col>
 
-      <!-- Perk Groups -->
       <v-col cols="12" md="6">
         <EntityEditor
           entity="perkgroups"
@@ -58,7 +56,6 @@
         />
       </v-col>
 
-      <!-- Price Policies -->
       <v-col cols="12" md="6">
         <EntityEditor
           entity="pricepolicies"
@@ -71,7 +68,6 @@
         />
       </v-col>
 
-      <!-- Trains -->
       <v-col cols="12" md="6">
         <EntityEditor
           entity="trains"
@@ -89,7 +85,6 @@
         />
       </v-col>
 
-      <!-- Timetable -->
       <v-col cols="12" md="6">
         <EntityEditor
           entity="timetable"
@@ -102,11 +97,11 @@
             trainId: { entity: 'trains', label: t => `Train #${t.id}` }
           }"
           :datetimes="['departure', 'arrival']"
+          inactiveSwitch
           @error="showError"
         />
       </v-col>
 
-      <!-- Users -->
       <v-col cols="12" md="6">
         <EntityEditor
           entity="users"
@@ -119,7 +114,6 @@
         />
       </v-col>
 
-      <!-- Tickets -->
       <v-col cols="12" md="6">
         <EntityEditor
           entity="tickets"
@@ -136,7 +130,6 @@
         />
       </v-col>
 
-      <!-- Ticket Locks -->
       <v-col cols="12" md="6">
         <EntityEditor
           entity="ticketlocks"
@@ -153,7 +146,6 @@
         />
       </v-col>
 
-      <!-- Payments -->
       <v-col cols="12" md="6">
         <EntityEditor
           entity="payments"

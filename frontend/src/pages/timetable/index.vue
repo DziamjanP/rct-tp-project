@@ -44,7 +44,10 @@
       </v-btn>
     </v-card>
 
-    <div v-if="results.length === 0" class="text-center text-grey">
+    <div v-if="emptyResults" class="text-center text-grey">
+      Use fields above to search
+    </div>
+    <div v-if="!emptyResults && results.length === 0" class="text-center text-grey">
       No results found
     </div>
 
@@ -77,6 +80,8 @@ const search = ref({
   toStation: null
 })
 
+const emptyResults = ref<boolean>(true);
+
 onMounted(loadStations)
 
 async function loadStations() {
@@ -96,11 +101,9 @@ async function searchTimetable() {
     params.toStationId = search.value.toStation
 
   results.value = await api.searchTimetable(params)
+  emptyResults.value = false;
 }
 
-// -----------------
-// Group by date
-// -----------------
 const groupedResults = computed(() => {
   const map: Record<string, any[]> = {}
 
