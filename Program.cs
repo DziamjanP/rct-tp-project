@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using System.Linq;
+using Microsoft.AspNetCore.Mvc;
 
 var builder = WebApplication.CreateBuilder(args);
 var conn = builder.Configuration.GetConnectionString("DefaultConnection") 
@@ -52,7 +53,7 @@ builder.Services.AddAuthorizationBuilder()
             if (string.IsNullOrEmpty(claim)) return false;
             return int.TryParse(claim, out var level) && level > 1;
         })
-)
+    )
     .AddPolicy("Support", policy =>
         policy.RequireAssertion(context =>
         {
@@ -60,7 +61,14 @@ builder.Services.AddAuthorizationBuilder()
             if (string.IsNullOrEmpty(claim)) return false;
             return int.TryParse(claim, out var level) && level > 0;
         })
-);
+    ).AddPolicy("User", policy =>
+        policy.RequireAssertion(context =>
+        {
+            var claim = context.User.FindFirst("access_level")?.Value;
+            if (string.IsNullOrEmpty(claim)) return false;
+            return int.TryParse(claim, out var level) && level >= 0;
+        })
+    );
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddOpenApi();
@@ -85,6 +93,12 @@ builder.Services.AddCors(options =>
             .AllowAnyMethod()
             .AllowCredentials();
     });
+});
+
+builder.Services.Configure<RouteOptions>(options =>
+{
+    options.AppendTrailingSlash = false;
+    options.LowercaseUrls = true;
 });
 
 builder.Services
@@ -162,20 +176,73 @@ app.MapPost("/auth/register", async (AppDbContext db, JwtService jwt, RegisterDt
 
 app.MapPost("/auth/login", async (AppDbContext db, JwtService jwt, LoginDto dto) =>
 {
-    if (string.IsNullOrWhiteSpace(dto.Phone) || string.IsNullOrWhiteSpace(dto.Password))
-        return Results.BadRequest("Phone and Password are required.");
-
     var user = await db.Users.FirstOrDefaultAsync(u => u.Phone == dto.Phone);
     if (user == null) return Results.Unauthorized();
 
-    var salt = user.Salt;
-    var hash = BCrypt.Net.BCrypt.HashPassword(dto.Password, salt);
+    if (!BCrypt.Net.BCrypt.Verify(dto.Password, user.Password))
+        return Results.Unauthorized();
 
-    if (hash != user.Password) return Results.Unauthorized();
+    var accessToken = jwt.GenerateToken(user.Id, user.AccessLevel, user.Name, user.Phone);
+    var refreshToken = jwt.GenerateRefreshToken();
 
-    var token = jwt.GenerateToken(user.Id, user.AccessLevel, user.Name, user.Phone);
-    var response = new AuthResponseDto(token, user.Id, user.AccessLevel, user.Name ?? "", user.Surname ?? "", user.Passport ?? "", user.Phone ?? "");
-    return Results.Ok(response);
+    db.RefreshTokens.Add(new RefreshToken {
+        UserId = user.Id,
+        Token = refreshToken,
+        ExpiresAt = DateTime.UtcNow.AddDays(7)
+    });
+
+    await db.SaveChangesAsync();
+
+    return Results.Ok(new
+    {
+        accessToken,
+        refreshToken,
+        userId = user.Id,
+        accessLevel = user.AccessLevel,
+        name = user.Name,
+        phone = user.Phone
+    });
+});
+
+
+app.MapPost("/auth/refresh", async (AppDbContext db, JwtService jwt, RefreshTokenDto refreshTokenDto) =>
+{
+    var tokenRow = await db.RefreshTokens
+        .Include(t => t.User)
+        .FirstOrDefaultAsync(t =>
+            t.Token == refreshTokenDto.RefreshToken &&
+            !t.Revoked &&
+            t.ExpiresAt > DateTime.UtcNow
+        );
+
+    if (tokenRow == null)
+        return Results.Unauthorized();
+
+    var user = tokenRow.User;
+
+    tokenRow.Revoked = true;
+
+    var newRefreshToken = jwt.GenerateRefreshToken();
+    var newAccessToken = jwt.GenerateToken(
+        user.Id,
+        user.AccessLevel,
+        user.Name,
+        user.Phone
+    );
+
+    db.RefreshTokens.Add(new RefreshToken {
+        UserId = user.Id,
+        Token = newRefreshToken,
+        ExpiresAt = DateTime.UtcNow.AddDays(7)
+    });
+
+    await db.SaveChangesAsync();
+
+    return Results.Ok(new
+    {
+        accessToken = newAccessToken,
+        refreshToken = newRefreshToken
+    });
 });
 
 app.MapGet("/users", async (AppDbContext db) => await db.Users.ToListAsync());
@@ -301,7 +368,7 @@ app.MapGet("/timetable", async (DateTime? after, AppDbContext db) =>
         .AsQueryable();
 
     if (after.HasValue)
-        query = query.Where(e => e.Departure >= after.Value);
+        query = query.Where(e => e.Arrival >= after.Value);
 
     return await query
         .OrderBy(e => e.Departure)
@@ -403,31 +470,35 @@ app.MapDelete("/payments/{id:long}", async (AppDbContext db, long id) =>
 }).RequireAuthorization("Admin");
 
 
-app.MapPost("/buy/{entryId:long}", async (
+app.MapPost("/buy", async (
     AppDbContext db,
     ITicketPricingService pricingService,
-    long? perkGroupId,
-    long entryId,
-    long userId
+    [FromBody] BuyTicketDto buyTicketDto
 ) =>
 {
-    var entry = await db.TimeTableEntries.FindAsync(entryId);
-    if (entry == null) return Results.NotFound();
+    var entry = await db.TimeTableEntries.FindAsync(buyTicketDto.EntryId);
+    if (entry == null) return Results.BadRequest();
 
     var policy = entry.PricePolicy;
-    if (policy == null) return Results.NotFound();
+    if (policy == null)
+    {
+        policy = new PricePolicy();
+    }
 
-    var selectedPerk = await db.PricePolicyPerkGroups.FindAsync(perkGroupId);
-    if (selectedPerk == null) return Results.NotFound();
+    if (buyTicketDto.PerkGroupId != null)
+    {
+        var selectedPerk = await db.PricePolicyPerkGroups.FindAsync(buyTicketDto.PerkGroupId);
+        if (selectedPerk == null) return Results.InternalServerError();
+        
+        if (!policy.PerkGroups.Contains(selectedPerk)) return Results.BadRequest();
+    }
 
-    if (!policy.PerkGroups.Contains(selectedPerk)) return Results.BadRequest();
-
-    var price = pricingService.CalculateTicketPrice(policy, entry.Train.SourceId, entry.Train.DestinationId, selectedPerk.PerkGroup);
+    var price = pricingService.CalculateTicketPrice(policy, entry.Train.SourceId, entry.Train.DestinationId);
 
     var lockRow = new TicketLock
     {
-        EntryId = entryId,
-        UserId = userId,
+        EntryId = buyTicketDto.EntryId,
+        UserId = buyTicketDto.UserId,
         Paid = false,
         CreatedAt = DateTime.UtcNow,
         InvoiceId = Guid.NewGuid().ToString(), // simulating invoice id

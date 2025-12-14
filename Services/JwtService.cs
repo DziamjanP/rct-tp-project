@@ -1,8 +1,8 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
+using System.Security.Cryptography;
 
 namespace CourseProject.Services;
 
@@ -10,6 +10,14 @@ public class JwtService
 {
     private readonly IConfiguration _cfg;
     public JwtService(IConfiguration cfg) => _cfg = cfg;
+
+
+    public string GenerateRefreshToken()
+    {
+        var bytes = RandomNumberGenerator.GetBytes(64);
+        return Convert.ToBase64String(bytes);
+    }
+
 
     public string GenerateToken(long userId, int accessLevel, string? name, string? phone)
     {

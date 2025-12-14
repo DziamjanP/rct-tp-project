@@ -1,7 +1,6 @@
 import { defineStore } from 'pinia'
 import api from '@/api'
 
-// Define the shape of the User object
 interface User {
   id: string
   name: string
@@ -11,28 +10,23 @@ interface User {
   accessLevel: number
 }
 
-// Define the shape of the login/register response from the API
 interface AuthResponse {
-  token: string
+  accessToken: string
   userId: string
   name: string
   surname: string
   passport: string
   phone: string
   accessLevel: number
+  refreshToken: string
 }
 
-// Define the state type
-interface AuthState {
-  user: User | null
-  token: string | null
-  loading: boolean
-}
 
 export const useAuthStore = defineStore('auth', {
-  state: (): AuthState => ({
+  state: () => ({
+    token: localStorage.getItem('token'),
+    refreshToken: localStorage.getItem('refreshToken'),
     user: JSON.parse(localStorage.getItem('user') || 'null'),
-    token: localStorage.getItem('token') || null,
     loading: false,
   }),
   getters: {
@@ -53,9 +47,10 @@ export const useAuthStore = defineStore('auth', {
           passport: res.passport,
           accessLevel: res.accessLevel,
         }
-        localStorage.setItem('token', res.token)
+        localStorage.setItem('token', res.accessToken)
         localStorage.setItem('user', JSON.stringify(user))
-        this.token = res.token
+        localStorage.setItem('refreshToken', res.refreshToken)
+        this.token = res.accessToken
         this.user = user
         return user
       } finally {
@@ -79,9 +74,10 @@ export const useAuthStore = defineStore('auth', {
         passport: res.passport,
         accessLevel: res.accessLevel,
       }
-      localStorage.setItem('token', res.token)
+      localStorage.setItem('token', res.accessToken)
       localStorage.setItem('user', JSON.stringify(user))
-      this.token = res.token
+      localStorage.setItem('refreshToken', res.refreshToken)
+      this.token = res.accessToken
       this.user = user
       return user
     },

@@ -13,24 +13,85 @@ api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   return config
 })
 
-api.interceptors.response.use(
-  r => r,
-  error => {
-    const status = error?.response?.status ?? 0
+let isRefreshing = false
+let refreshQueue: { resolve: (token: any) => void; reject: (reason?: any) => void }[] = []
 
-    if (status === 401) {
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
-      window.location.href = '/login'
+function processQueue(error: unknown, token = null) {
+  refreshQueue.forEach(promise => {
+    if (error) {
+      promise.reject(error)
+    } else {
+      promise.resolve(token)
+    }
+  })
+  refreshQueue = []
+}
+
+api.interceptors.request.use(config => {
+  const token = localStorage.getItem('token')
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`
+  }
+  return config
+})
+
+api.interceptors.response.use(
+  response => response,
+
+  async error => {
+    const originalRequest = error.config
+    const status = error.response?.status
+
+    if (status !== 401 || originalRequest._retry) {
+      return Promise.reject(error)
     }
 
-    return Promise.reject({
-      status,
-      message:
-        error.response?.data ??
-        error.message ??
-        'Unexpected error'
-    })
+    originalRequest._retry = true
+
+    if (isRefreshing) {
+      return new Promise((resolve, reject) => {
+        refreshQueue.push({
+          resolve: token => {
+            originalRequest.headers.Authorization = `Bearer ${token}`
+            resolve(api(originalRequest))
+          },
+          reject
+        })
+      })
+    }
+
+    isRefreshing = true
+
+    try {
+      const refreshToken = localStorage.getItem('refreshToken')
+
+      const response = await axios.post(`${BASE}/auth/refresh`, {
+        refreshToken
+      })
+
+      const newAccessToken = response.data.accessToken
+      const newRefreshToken = response.data.refreshToken
+
+      localStorage.setItem('token', newAccessToken)
+      localStorage.setItem('refreshToken', newRefreshToken)
+
+      api.defaults.headers.Authorization = `Bearer ${newAccessToken}`
+
+      processQueue(null, newAccessToken)
+
+      originalRequest.headers.Authorization = `Bearer ${newAccessToken}`
+      return api(originalRequest)
+
+    } catch (err) {
+      processQueue(err, null)
+
+      localStorage.clear()
+      window.location.href = '/login'
+
+      return Promise.reject(err)
+    } finally {
+      isRefreshing = false
+    }
   }
 )
 

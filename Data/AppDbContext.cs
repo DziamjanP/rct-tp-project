@@ -20,6 +20,7 @@ public class AppDbContext : DbContext
     public DbSet<Ticket> Tickets => Set<Ticket>();
     public DbSet<TicketLock> TicketLocks => Set<TicketLock>();
     public DbSet<Payment> Payments => Set<Payment>();
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -84,7 +85,6 @@ public class AppDbContext : DbContext
         {
             eb.HasKey(p => p.Id);
             eb.Property(p => p.PricePerKm);
-            eb.Property(p => p.PricePerStation);
             eb.Property(p => p.FixedPrice).HasColumnType("numeric");
         });
 
