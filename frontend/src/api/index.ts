@@ -137,6 +137,11 @@ export default {
     return api.get(`/${entity}/${id}`).then(r => r.data)
   },
 
+  estimatePrice<T = unknown>(ticket: ID, perkGroup?: ID): Promise<T> {
+    let params: Record<string, unknown> = { entryId: ticket, perkGroupId: perkGroup };
+    return api.get('/price', { params }).then(r => r.data)
+  },
+
   create<T = unknown, P = unknown>(
     entity: EntityName,
     payload: P

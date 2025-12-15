@@ -570,6 +570,36 @@ app.MapDelete("/payments/{id:long}", async (AppDbContext db, long id) =>
 }).RequireAuthorization("Admin");
 
 
+app.MapGet("/price", async (
+    AppDbContext db,
+    ITicketPricingService pricingService,
+    [FromQuery] long entryId,
+    [FromQuery] long? perkGroupId
+) => {
+    var entry = await db.TimeTableEntries.Include(l => l.PricePolicy).Where(e => e.Id == entryId).FirstAsync();
+    if (entry == null) return Results.BadRequest();
+
+    var policy = entry.PricePolicy;
+    policy ??= await db.PricePolicies.FindAsync((long) 1);
+
+    PerkGroup? selectedPerk = null;
+
+    if (perkGroupId != null)
+    {
+        selectedPerk = await db.PerkGroups.FindAsync(perkGroupId);
+        if (selectedPerk == null) return Results.BadRequest();
+        var selectedPolicyPerk = await db.PricePolicyPerkGroups.FindAsync(policy.Id, perkGroupId);
+        if (selectedPolicyPerk == null) selectedPerk = null;
+    }
+
+    var train = entry.Train;
+    train ??= await db.Trains.FindAsync(entry.TrainId);
+
+    var price = pricingService.CalculateTicketPrice(policy, train.SourceId, train.DestinationId, selectedPerk);
+
+    return Results.Ok(new PriceEstimateResult((long) price));
+});
+
 app.MapPost("/buy", async (
     AppDbContext db,
     ITicketPricingService pricingService,

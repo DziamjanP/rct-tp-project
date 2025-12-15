@@ -52,10 +52,16 @@
         dense
         outlined
         :search-input.sync="search"
+        @update:model-value="updatePriceEstimate()"
       >
         
       </v-autocomplete>
 
+      <v-divider />
+
+      <h3 class="pa-4">
+        {{ priceEstimate }}
+      </h3>
 
       <v-row>
         <v-col cols="12">
@@ -153,6 +159,10 @@ interface PerkGroup {
   discount?: number;
 }
 
+interface PriceEstimate {
+  price: number
+}
+
 const search = ref('');
 const perkGroups = ref<PerkGroup[]>([]);
 const selectedPerkGroup = ref<PerkGroup | null>(null);
@@ -163,6 +173,8 @@ const router = useRouter()
 const entry = ref<Entry | null>(null)
 const loading = ref(false)
 const successDialog = ref(false)
+
+const priceEstimate = ref(0)
 
 const entryId = route.params.entryId as string
 
@@ -185,7 +197,13 @@ onMounted(async () => {
   }
   console.log(entry);
   perkGroups.value = await api.list<PerkGroup>('perkgroups');
+  await updatePriceEstimate();
 })
+
+async function updatePriceEstimate() {
+  let resp = await api.estimatePrice<PriceEstimate>(entryId, (selectedPerkGroup.value ?? { id: undefined }).id);
+  priceEstimate.value = resp.price;
+}
 
 function formatDateTime(dt: string) {
   const d = new Date(dt)

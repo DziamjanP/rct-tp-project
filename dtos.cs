@@ -1,3 +1,6 @@
+using System.Reflection;
+using CourseProject.Models;
+
 namespace CourseProject.Dtos
 {
     public record RegisterDto(string Name, string? Surname, string Phone, string Password);
@@ -22,4 +25,5 @@ namespace CourseProject.Dtos
         string RefreshToken
     );
     public record PayLocksRequest(List<long> LockIds);
+    public record PriceEstimateResult(long Price);
 }
