@@ -25,6 +25,7 @@ declare module 'vue-router/auto-routes' {
     '/home': RouteRecordInfo<'/home', '/home', Record<never, never>, Record<never, never>>,
     '/login': RouteRecordInfo<'/login', '/login', Record<never, never>, Record<never, never>>,
     '/register': RouteRecordInfo<'/register', '/register', Record<never, never>, Record<never, never>>,
+    '/reports': RouteRecordInfo<'/reports', '/reports', Record<never, never>, Record<never, never>>,
     '/tickets': RouteRecordInfo<'/tickets', '/tickets', Record<never, never>, Record<never, never>>,
     '/timetable/': RouteRecordInfo<'/timetable/', '/timetable', Record<never, never>, Record<never, never>>,
     '/timetable/[id]': RouteRecordInfo<'/timetable/[id]', '/timetable/:id', { id: ParamValue<true> }, { id: ParamValue<false> }>,
@@ -67,6 +68,10 @@ declare module 'vue-router/auto-routes' {
     }
     'src/pages/register.vue': {
       routes: '/register'
+      views: never
+    }
+    'src/pages/reports.vue': {
+      routes: '/reports'
       views: never
     }
     'src/pages/tickets.vue': {

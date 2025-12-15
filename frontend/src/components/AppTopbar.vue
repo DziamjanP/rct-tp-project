@@ -27,6 +27,7 @@
 
   const items = computed(() => auth.isAuthenticated ? (auth.isAdmin ? [
     { to: '/', title: 'Home'},
+    { to: '/reports', title: 'Reports'},
     { to: '/admin', title: 'Admin'},
     { to: '/timetable', title: 'Timetable'},
     { to: '/tickets', title: 'My tickets'},

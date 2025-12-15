@@ -185,6 +185,10 @@ export default {
     return api.get('/timetable', { params }).then(r => r.data)
   },
 
+  getReport<T = unknown>(params?: Record<string, unknown>): Promise<T> {
+    return api.get('/report', { params }).then(r => r.data)
+  },
+
   searchTimetable(params?: Record<string, unknown>) {
     return api
       .get('/timetable/search', { params })

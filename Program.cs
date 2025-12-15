@@ -776,4 +776,60 @@ app.MapPost("/pay", async (
 .RequireAuthorization();
 
 
+
+app.MapGet("/report", async (
+    AppDbContext db,
+    [FromQuery] DateTime? from,
+    [FromQuery] DateTime? to,
+    [FromQuery] int topK
+) =>
+{
+    var query = db.Payments
+        .Include(p => p.Lock!)
+            .ThenInclude(l => l.Entry!)
+        .AsQueryable();
+
+    if (from.HasValue)
+        query = query.Where(p => p.DateTime >= from.Value);
+    if (to.HasValue)
+        query = query.Where(p => p.DateTime <= to.Value);
+
+    var paymentsList = await query.ToListAsync();
+
+    var totalPayments = paymentsList.Count;
+    var successfulPayments = paymentsList.Count(p => p.Successful);
+    var totalRevenue = paymentsList.Where(p => p.Successful && p.Sum.HasValue)
+                                    .Sum(p => p.Sum!.Value);
+    var averagePayment = successfulPayments > 0 
+        ? paymentsList.Where(p => p.Successful && p.Sum.HasValue).Average(p => p.Sum!.Value) 
+        : 0;
+
+    // top k trains by payments
+    var topTrains = paymentsList
+        .Where(p => p.Lock?.Entry != null)
+        .GroupBy(p => p.Lock!.Entry!.TrainId)
+        .Select(g => new TopTrainDto
+        {
+            TrainId = g.Key,
+            PaymentsCount = g.Count()
+        })
+        .OrderByDescending(t => t.PaymentsCount)
+        .Take(topK)
+        .ToList();
+
+    var dto = new PaymentReportDto
+    {
+        TotalPayments = totalPayments,
+        SuccessfulPayments = successfulPayments,
+        TotalRevenue = totalRevenue,
+        AveragePayment = averagePayment,
+        TopTrains = topTrains
+    };
+
+    return Results.Ok(dto);
+})
+.RequireAuthorization("Admin");
+
+
+
 app.Run();

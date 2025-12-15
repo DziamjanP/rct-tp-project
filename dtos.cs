@@ -26,4 +26,24 @@ namespace CourseProject.Dtos
     );
     public record PayLocksRequest(List<long> LockIds);
     public record PriceEstimateResult(long Price);
+    public class PaymentReportDto
+    {
+        public int TotalPayments { get; set; }
+        public int SuccessfulPayments { get; set; }
+        public decimal AveragePayment { get; set; }
+        public decimal TotalRevenue { get; set; }
+
+        public List<TopTrainDto> TopTrains { get; set; } = new();
+
+        public decimal SuccessPercentage =>
+            TotalPayments == 0 ? 0 : ((decimal) SuccessfulPayments / TotalPayments) * 100;
+
+        public decimal FailurePercentage => 100 - SuccessPercentage;
+    }
+
+    public class TopTrainDto
+    {
+        public long TrainId { get; set; }
+        public int PaymentsCount { get; set; }
+    }
 }
