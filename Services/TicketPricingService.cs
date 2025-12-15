@@ -33,12 +33,8 @@ namespace CourseProject.Services
             int stations = _distanceCalculator.CalculateStationsBetween(fromStationId, toStationId);
 
             double pricePerKm = policy.PricePerKm ?? 0.0;
-            double pricePerStation = policy.PricePerStation ?? 0.0;
 
-            decimal variablePrice = Math.Max(
-                (decimal)(pricePerKm * km),
-                (decimal)(pricePerStation * stations)
-            );
+            decimal variablePrice = (decimal)(pricePerKm * km);
 
             decimal totalPrice = fixedPrice + variablePrice;
 

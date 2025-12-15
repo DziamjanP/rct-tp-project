@@ -227,10 +227,55 @@
     </v-container>
   </v-app>
 
+  <v-dialog v-model="ticketDialog" max-width="600">
+    <v-card v-if="selectedTicket">
+      <v-card-title>
+        Ticket details
+      </v-card-title>
+
+      <v-card-text>
+        <div class="text-caption text-grey mb-1">
+          {{ selectedTicket.entry.train.name }}
+        </div>
+
+        <div class="font-weight-medium">
+          {{ selectedTicket.entry.train.source.name }}
+          →
+          {{ selectedTicket.entry.train.destination.name }}
+        </div>
+
+        <div class="text-body-2 text-grey mb-3">
+          {{ formatDateTime(selectedTicket.entry.departure) }}
+          —
+          {{ formatDateTime(selectedTicket.entry.arrival) }}
+        </div>
+
+        <div>
+          Used: {{ selectedTicket.used }}
+        </div>
+
+      </v-card-text>
+
+      <v-card-actions>
+        <v-spacer />
+    
+        <v-btn v-if="!selectedTicket.used" variant="text" @click="refundTicket(selectedTicket)">
+          Refund
+        </v-btn>
+
+        <v-btn variant="text" color="primary" @click="ticketDialog = false">
+          Ok
+        </v-btn>
+    
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
+
+
   <v-dialog v-model="lockDialog" max-width="600">
     <v-card v-if="selectedLock">
       <v-card-title>
-        Train Details
+        Booking Details
       </v-card-title>
 
       <v-card-text>
@@ -507,6 +552,20 @@ async function confirmPayment() {
       lockIds: selectedLocks.value.map(l => l.id)
     })
     paymentDialog.value = false
+    await loadLocks()
+    await loadTickets()
+  } catch (e) {
+    console.error(e)
+  }
+}
+
+
+async function refundTicket(ticket: Ticket) {
+  try {
+    await api.refundPayment(
+    ticket.id,
+    {})
+    ticketDialog.value = false
     await loadLocks()
     await loadTickets()
   } catch (e) {

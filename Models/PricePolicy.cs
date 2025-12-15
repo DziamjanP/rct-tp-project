@@ -7,7 +7,6 @@ public class PricePolicy
     public long Id { get; set; }
 
     public double? PricePerKm { get; set; }
-    public double? PricePerStation { get; set; }
     public decimal? FixedPrice { get; set; }
 
     // normalized M:N mapping

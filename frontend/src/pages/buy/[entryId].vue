@@ -2,10 +2,9 @@
   <v-container class="pa-4">
     <v-card class="pa-4" v-if="entry">
 
-      <!-- Timetable & Train Info -->
       <v-row>
         <v-col cols="12">
-          <h2>Lock Ticket for Train {{ entry?.trainId }}</h2>
+          <h2>Book Ticket for Train {{ entry?.trainId }}</h2>
           <p><strong>Departure:</strong> {{ formatDateTime(entry?.departureTime ?? Date.now().toString()) }}</p>
           <p><strong>Arrival:</strong> {{ formatDateTime(entry?.arrivalTime ?? Date.now().toString()) }}</p>
           <p><strong>From:</strong> {{ entry?.train.sourceId }}</p>
@@ -41,6 +40,22 @@
           />
         </v-col>
       </v-row>
+
+      <v-autocomplete
+        v-model="selectedPerkGroup"
+        :items="perkGroups"
+        item-title="name"
+        item-value="id"
+        return-object
+        label="Select PerkGroup"
+        clearable
+        dense
+        outlined
+        :search-input.sync="search"
+      >
+        
+      </v-autocomplete>
+
 
       <v-row>
         <v-col cols="12">
@@ -111,6 +126,12 @@ interface Entry {
     typeId: number,
     stops?: Stop[]
   }
+  pricePolicyId: number
+  pricePolicy?: {
+    id: number
+    pricePerKm: number
+    fixedPrice: number 
+  }
 }
 
 interface TimeTableResponse {
@@ -121,13 +142,25 @@ interface TimeTableResponse {
   arrivalStationName: string
   departureTime: string
   arrivalTime: string
+  pricePolicyId?: number
 }
+
+interface PerkGroup {
+  id: number;
+  name: string;
+  description?: string;
+  fixedPrice?: number;
+  discount?: number;
+}
+
+const search = ref('');
+const perkGroups = ref<PerkGroup[]>([]);
+const selectedPerkGroup = ref<PerkGroup | null>(null);
 
 const route = useRoute("/buy/[entryId]")
 const router = useRouter()
 
 const entry = ref<Entry | null>(null)
-const selectedPerkGroup = ref<number | null>(null)
 const loading = ref(false)
 const successDialog = ref(false)
 
@@ -145,10 +178,13 @@ onMounted(async () => {
       departureTime: ttEntry.departureTime,
       arrivalTime: ttEntry.arrivalTime,
       trainId: ttEntry.trainId,
-      train: await api.get('trains', ttEntry.trainId)
+      train: await api.get('trains', ttEntry.trainId),
+      pricePolicyId: ttEntry.pricePolicyId ?? 0,
+      pricePolicy: await api.get('pricepolicies', ttEntry.pricePolicyId ?? 0)
     }
   }
   console.log(entry);
+  perkGroups.value = await api.list<PerkGroup>('perkgroups');
 })
 
 function formatDateTime(dt: string) {
@@ -176,7 +212,7 @@ async function lockTicket() {
       entryId: entry.value.id,
       userId: auth.user?.id,
     }
-    if (selectedPerkGroup.value) payload.perkGroupId = selectedPerkGroup.value
+    if (selectedPerkGroup.value) payload.perkGroupId = selectedPerkGroup.value.id
     await api.create(`buy`, payload)
 
     successDialog.value = true

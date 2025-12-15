@@ -33,14 +33,6 @@
       <!-- Right block: vertical buttons -->
       <div class="d-flex flex-column align-end">
         <v-btn
-          variant="plain"
-          density="comfortable"
-          @click="openDetails"
-        >
-          More
-        </v-btn>
-
-        <v-btn
           color="primary"
           density="comfortable"
           class="mt-1"

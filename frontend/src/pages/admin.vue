@@ -62,7 +62,7 @@
           detailsBase="pricepolicies"
           title="Price Policies"
           :headers="['Per KM','Per Station','Fixed Price']"
-          :keys="['pricePerKm','pricePerStation','fixedPrice']"
+          :keys="['pricePerKm','fixedPrice']"
           :defaultModel="{ pricePerKm:0, pricePerStation:0, fixedPrice:0 }"
           @error="showError"
         />

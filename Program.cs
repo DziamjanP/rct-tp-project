@@ -70,6 +70,13 @@ builder.Services.AddAuthorizationBuilder()
             if (string.IsNullOrEmpty(claim)) return false;
             return int.TryParse(claim, out var level) && level >= 0;
         })
+    ).AddPolicy("Inspector", policy =>
+        policy.RequireAssertion(context =>
+        {
+            var claim = context.User.FindFirst("access_level")?.Value;
+            if (string.IsNullOrEmpty(claim)) return false;
+            return int.TryParse(claim, out var level) && level == -1;
+        })
     );
 
 builder.Services.AddEndpointsApiExplorer();
@@ -325,7 +332,7 @@ app.MapDelete("/trains/{id:long}", async (AppDbContext db, long id) =>
 // Price policies
 app.MapGet("/pricepolicies", async (AppDbContext db) => await db.PricePolicies.ToListAsync()).RequireAuthorization("Admin");
 app.MapGet("/pricepolicies/{id:long}", async (AppDbContext db, long id) =>
-    await db.PricePolicies.FindAsync(id) is PricePolicy u ? Results.Ok(u) : Results.NotFound()).RequireAuthorization("Admin");
+    await db.PricePolicies.FindAsync(id) is PricePolicy u ? Results.Ok(u) : Results.NotFound()).RequireAuthorization();
 app.MapPost("/pricepolicies", async (AppDbContext db, PricePolicy p) =>
 {
     db.PricePolicies.Add(p);
@@ -399,7 +406,8 @@ app.MapGet("/timetable/{id:long}", async (
             x.s.Name,
             x.d.Name,
             x.e.Departure,
-            x.e.Arrival
+            x.e.Arrival,
+            x.e.PricePolicyId
         ))
         .FirstAsync();
 
@@ -483,6 +491,18 @@ app.MapDelete("/tickets/{id:long}", async (AppDbContext db, long id) =>
     return Results.NoContent();
 }).RequireAuthorization("Support");
 
+app.MapPost("/tickets/use/{id:long}", async (AppDbContext db, long id) =>
+{
+    var ticket = await db.Tickets.FindAsync(id);
+    if (ticket != null)
+    {
+        ticket.Used = true;
+        await db.SaveChangesAsync();
+        return Results.Ok(ticket);
+    }
+    return Results.NotFound();
+}).RequireAuthorization("Inspector", "Admin");
+
 // TicketLocks
 app.MapGet("/ticketlocks", async (
     ClaimsPrincipal user,
@@ -498,7 +518,6 @@ app.MapGet("/ticketlocks", async (
 
     var userId = long.Parse(userIdClaim.Value);
     var accessLevel = int.Parse(accessLevelClaim.Value);
-    app.Logger.LogInformation($"LOCKS TOKEN RESULT {userId} | {accessLevel}");
 
     if (admin_list && accessLevel > 0)
     {
@@ -554,27 +573,28 @@ app.MapDelete("/payments/{id:long}", async (AppDbContext db, long id) =>
 app.MapPost("/buy", async (
     AppDbContext db,
     ITicketPricingService pricingService,
-    [FromBody] BuyTicketDto buyTicketDto
-) =>
-{
+    BuyTicketDto buyTicketDto
+) => {
     var entry = await db.TimeTableEntries.Include(l => l.PricePolicy).Where(e => e.Id == buyTicketDto.EntryId).FirstAsync();
     if (entry == null) return Results.BadRequest();
 
     var policy = entry.PricePolicy;
     policy ??= await db.PricePolicies.FindAsync((long) 1);
 
+    PerkGroup? selectedPerk = null;
+
     if (buyTicketDto.PerkGroupId != null)
     {
-        var selectedPerk = await db.PricePolicyPerkGroups.FindAsync(buyTicketDto.PerkGroupId);
-        if (selectedPerk == null) return Results.InternalServerError();
-        
-        if (!policy.PerkGroups.Contains(selectedPerk)) return Results.BadRequest();
+        selectedPerk = await db.PerkGroups.FindAsync(buyTicketDto.PerkGroupId);
+        if (selectedPerk == null) return Results.BadRequest();
+        var selectedPolicyPerk = await db.PricePolicyPerkGroups.FindAsync(policy.Id, buyTicketDto.PerkGroupId);
+        if (selectedPolicyPerk == null) selectedPerk = null;
     }
 
     var train = entry.Train;
     train ??= await db.Trains.FindAsync(entry.TrainId);
 
-    var price = pricingService.CalculateTicketPrice(policy, train.SourceId, train.DestinationId);
+    var price = pricingService.CalculateTicketPrice(policy, train.SourceId, train.DestinationId, selectedPerk);
 
     var lockRow = new TicketLock
     {
@@ -592,6 +612,18 @@ app.MapPost("/buy", async (
     return Results.Ok(lockRow);
 });
 
+app.MapPost("/refund/{ticketId:long}", async (
+    AppDbContext db,
+    ITicketPricingService pricingService,
+    long ticketId
+) => {
+    var t = await db.Tickets.FindAsync(ticketId);
+    if (t == null) return Results.NotFound();
+
+    db.Tickets.Remove(t);
+    await db.SaveChangesAsync();
+    return Results.Ok();
+});
 
 app.MapGet("/timetable/search", async (
     AppDbContext db,
@@ -635,7 +667,8 @@ app.MapGet("/timetable/search", async (
             x.s.Name,
             x.d.Name,
             x.e.Departure,
-            x.e.Arrival
+            x.e.Arrival,
+            null
         ))
         .ToListAsync();
 

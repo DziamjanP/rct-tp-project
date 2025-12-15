@@ -10,7 +10,8 @@ namespace CourseProject.Dtos
         string DepartureStationName,
         string ArrivalStationName,
         DateTime DepartureTime,
-        DateTime ArrivalTime
+        DateTime ArrivalTime,
+        long? PricePolicyId
     );
     public record BuyTicketDto(
         long UserId,
