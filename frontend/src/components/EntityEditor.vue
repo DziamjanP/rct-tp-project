@@ -256,7 +256,7 @@ function saveDateTime() {
 
 async function load() {
   const ent = props.entity ?? 'unknown'
-  items.value = hideInactive.value ? await api.list(ent, { "after":  new Date().toISOString() }) : await api.list(ent)
+  items.value = hideInactive.value ? await api.list(ent, { "admin_list": true, "after":  new Date().toISOString() }) : await api.list(ent)
 }
 
 onMounted(() => {

@@ -55,10 +55,42 @@
 
             <v-divider></v-divider>
 
-            <!-- Tab Content -->
             <v-card-text v-if="activeTab === 'tickets'">
               <h3>Tickets</h3>
-              <p>List of tickets will go here.</p>
+              <v-card
+                v-for="ticket in tickets"
+                :key="ticket.id"
+                class="mb-3 pa-3"
+                elevation="2"
+                variant="tonal"
+                @click="openTicketDetails(ticket)"
+              >
+                <v-row align="center">
+
+                  <v-col cols="1" class="text-center">
+                    <v-icon size="36">mdi-train</v-icon>
+                  </v-col>
+
+                  <v-col cols="8">
+                    <div class="text-caption text-grey">
+                      {{ ticket.entry.train.type }}
+                    </div>
+
+                    <div class="font-weight-medium">
+                      {{ ticket.entry.train.source.name }}
+                      →
+                      {{ ticket.entry.train.destination.name }}
+                    </div>
+
+                    <div class="text-body-2 text-grey">
+                      {{ formatDateTime(ticket.entry.departure) }}
+                      —
+                      {{ formatDateTime(ticket.entry.arrival) }}
+                    </div>
+                  </v-col>
+
+                </v-row>
+              </v-card>
             </v-card-text>
 
             <v-card-text v-else-if="activeTab === 'locks'">
@@ -103,9 +135,9 @@
                     </div>
 
                     <div class="text-body-2 text-grey">
-                      {{ formatDateTime(lock.entry.departureTime) }}
+                      {{ formatDateTime(lock.entry.departure) }}
                       —
-                      {{ formatDateTime(lock.entry.arrivalTime) }}
+                      {{ formatDateTime(lock.entry.arrival) }}
                     </div>
                   </v-col>
 
@@ -149,7 +181,40 @@
 
             <v-card-text v-else-if="activeTab === 'archive'">
               <h3>Ticket Archive</h3>
-              <p>Archived tickets content here.</p>
+              <v-card
+                v-for="ticket in ticketsArhived"
+                :key="ticket.id"
+                class="mb-3 pa-3"
+                elevation="2"
+                variant="tonal"
+                @click="openTicketDetails(ticket)"
+              >
+                <v-row align="center">
+
+                  <v-col cols="1" class="text-center">
+                    <v-icon size="36">mdi-train</v-icon>
+                  </v-col>
+
+                  <v-col cols="8">
+                    <div class="text-caption text-grey">
+                      {{ ticket.entry.train.type }}
+                    </div>
+
+                    <div class="font-weight-medium">
+                      {{ ticket.entry.train.source.name }}
+                      →
+                      {{ ticket.entry.train.destination.name }}
+                    </div>
+
+                    <div class="text-body-2 text-grey">
+                      {{ formatDateTime(ticket.entry.departure) }}
+                      —
+                      {{ formatDateTime(ticket.entry.arrival) }}
+                    </div>
+                  </v-col>
+
+                </v-row>
+              </v-card>
             </v-card-text>
 
             <v-card-text v-else-if="activeTab === 'payments'">
@@ -284,6 +349,26 @@ import { useAuthStore } from '@/stores/auth'
 import router from '@/router'
 import api from '@/api'
 
+interface TicketLock {
+  id: number
+  entryId: number
+  userId: number
+  invoiceId: string | null
+  paid: boolean
+  sum: number
+  createdAt: string
+  train: any
+  entry: any
+}
+
+interface Ticket {
+  id: number
+  entryId: number
+  userId: number
+  used: boolean
+  entry: any
+}
+
 const auth = useAuthStore()
 
 const user = computed(() => auth.user)
@@ -295,6 +380,10 @@ const hideInactiveLocks = ref(false);
 
 const locks = ref<TicketLock[]>([])
 const locksRetrieved = ref<TicketLock[]>([]);
+
+const tickets = ref<Ticket[]>([])
+const ticketsRetrieved = ref<Ticket[]>([]);
+const ticketsArhived = ref<Ticket[]>([]);
 
 const paymentDialog = ref(false)
 const selectedLocks = ref<TicketLock[]>([])
@@ -310,18 +399,8 @@ selectedLocks.value.reduce((sum, l) => sum + l.sum, 0)
 const lockDialog = ref(false)
 const selectedLock = ref<TicketLock | null>(null)
 
-interface TicketLock {
-  id: number
-  entryId: number
-  userId: number
-  invoiceId: string | null
-  paid: boolean
-  sum: number
-  createdAt: string
-  train: any
-  entry: any
-}
-
+const ticketDialog = ref(false)
+const selectedTicket = ref<Ticket | null>(null)
 
 const now = ref(Date.now())
 let timer: number
@@ -329,7 +408,8 @@ let timer: number
 onMounted(() => {
   timer = window.setInterval(() => {
     now.value = Date.now()
-  }, 1000)
+  }, 1000);
+  loadTickets();
 })
 
 onUnmounted(() => {
@@ -361,6 +441,9 @@ watch(activeTab, (tab) => {
   if (tab.toLowerCase() == 'locks'){
     loadLocks();
   }
+  else if (tab.toLowerCase() == 'tickets'){
+    loadTickets();
+  }
 });
 
 function reformatList(list_name: string) {
@@ -381,6 +464,13 @@ async function loadLocks() {
   reformatList('locks');
 }
 
+async function loadTickets() {
+  ticketsRetrieved.value = await api.list('tickets');
+  tickets.value = ticketsRetrieved.value.filter(t => t.used == false);
+  ticketsArhived.value = ticketsRetrieved.value.filter(t => t.used == true);
+  //reformatList('locks');
+}
+
 function formatDateTime(value: string) {
   return new Date(value).toLocaleString([], {
     dateStyle: 'medium',
@@ -391,6 +481,11 @@ function formatDateTime(value: string) {
 function openLockDetails(lock: TicketLock) {
   selectedLock.value = lock
   lockDialog.value = true
+}
+
+function openTicketDetails(lock: Ticket) {
+  selectedTicket.value = lock
+  ticketDialog.value = true
 }
 
 function buyFromDetails() {
@@ -413,6 +508,7 @@ async function confirmPayment() {
     })
     paymentDialog.value = false
     await loadLocks()
+    await loadTickets()
   } catch (e) {
     console.error(e)
   }

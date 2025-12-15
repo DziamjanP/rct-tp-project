@@ -422,7 +422,49 @@ app.MapDelete("/timetable/{id:long}", async (AppDbContext db, long id) =>
 }).RequireAuthorization("Admin");
 
 // Tickets
-app.MapGet("/tickets", async (AppDbContext db) => await db.Tickets.ToListAsync());
+app.MapGet("/tickets", async (
+    ClaimsPrincipal user,
+    AppDbContext db,
+    bool admin_list = false
+) => {
+    var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
+    var accessLevelClaim = user.FindFirst("access_level");
+
+
+    if (userIdClaim == null || accessLevelClaim == null)
+        return Results.Unauthorized();
+
+    var userId = long.Parse(userIdClaim.Value);
+    var accessLevel = int.Parse(accessLevelClaim.Value);
+
+    if (admin_list && accessLevel > 0)
+    {
+        return Results.Ok(
+            await db.Tickets
+                .Include(l => l.Entry)
+                .ThenInclude(e => e.Train)
+                .ThenInclude(t => t.Source)
+                .Include(l => l.Entry)
+                .ThenInclude(e => e.Train)
+                .ThenInclude(t => t.Destination)
+                .OrderByDescending(l => l.Entry.Departure)
+                .ToListAsync()
+        );
+    }
+
+    return Results.Ok(
+        await db.Tickets
+            .Include(l => l.Entry)
+            .ThenInclude(e => e.Train)
+            .ThenInclude(t => t.Source)
+            .Include(l => l.Entry)
+            .ThenInclude(e => e.Train)
+            .ThenInclude(t => t.Destination)
+            .OrderByDescending(l => l.Entry.Departure)
+            .ToListAsync()
+    );
+}).RequireAuthorization();
+
 app.MapGet("/tickets/{id:long}", async (AppDbContext db, long id) =>
     await db.Tickets.FindAsync(id) is Ticket u ? Results.Ok(u) : Results.NotFound());
 app.MapPost("/tickets", async (AppDbContext db, Ticket t) =>
@@ -444,7 +486,8 @@ app.MapDelete("/tickets/{id:long}", async (AppDbContext db, long id) =>
 // TicketLocks
 app.MapGet("/ticketlocks", async (
     ClaimsPrincipal user,
-    AppDbContext db
+    AppDbContext db,
+    bool admin_list = false
 ) => {
     var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
     var accessLevelClaim = user.FindFirst("access_level");
@@ -457,24 +500,24 @@ app.MapGet("/ticketlocks", async (
     var accessLevel = int.Parse(accessLevelClaim.Value);
     app.Logger.LogInformation($"LOCKS TOKEN RESULT {userId} | {accessLevel}");
 
-    if (accessLevel > 0)
+    if (admin_list && accessLevel > 0)
     {
         return Results.Ok(
             await db.TicketLocks
-                .Include(l => l.Entry)
-                .ThenInclude(e => e.Train)
-                .ThenInclude(t => t.Source)
-                .Include(l => l.Entry)
-                .ThenInclude(e => e.Train)
-                .ThenInclude(t => t.Destination)
+                .Where(l => l.UserId == userId)
                 .OrderByDescending(l => l.CreatedAt)
                 .ToListAsync()
         );
-    }
+        }
 
     return Results.Ok(
         await db.TicketLocks
-            .Where(l => l.UserId == userId)
+            .Include(l => l.Entry)
+            .ThenInclude(e => e.Train)
+            .ThenInclude(t => t.Source)
+            .Include(l => l.Entry)
+            .ThenInclude(e => e.Train)
+            .ThenInclude(t => t.Destination)
             .OrderByDescending(l => l.CreatedAt)
             .ToListAsync()
     );
