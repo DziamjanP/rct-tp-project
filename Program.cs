@@ -9,6 +9,8 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using System.Linq;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
+using System.IdentityModel.Tokens.Jwt;
 
 var builder = WebApplication.CreateBuilder(args);
 var conn = builder.Configuration.GetConnectionString("DefaultConnection") 
@@ -440,7 +442,43 @@ app.MapDelete("/tickets/{id:long}", async (AppDbContext db, long id) =>
 }).RequireAuthorization("Support");
 
 // TicketLocks
-app.MapGet("/ticketlocks", async (AppDbContext db) => await db.TicketLocks.ToListAsync());
+app.MapGet("/ticketlocks", async (
+    ClaimsPrincipal user,
+    AppDbContext db
+) => {
+    var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
+    var accessLevelClaim = user.FindFirst("access_level");
+
+
+    if (userIdClaim == null || accessLevelClaim == null)
+        return Results.Unauthorized();
+
+    var userId = long.Parse(userIdClaim.Value);
+    var accessLevel = int.Parse(accessLevelClaim.Value);
+    app.Logger.LogInformation($"LOCKS TOKEN RESULT {userId} | {accessLevel}");
+
+    if (accessLevel > 0)
+    {
+        return Results.Ok(
+            await db.TicketLocks
+                .Include(l => l.Entry)
+                .ThenInclude(e => e.Train)
+                .ThenInclude(t => t.Source)
+                .Include(l => l.Entry)
+                .ThenInclude(e => e.Train)
+                .ThenInclude(t => t.Destination)
+                .OrderByDescending(l => l.CreatedAt)
+                .ToListAsync()
+        );
+    }
+
+    return Results.Ok(
+        await db.TicketLocks
+            .Where(l => l.UserId == userId)
+            .OrderByDescending(l => l.CreatedAt)
+            .ToListAsync()
+    );
+}).RequireAuthorization();
 app.MapGet("/ticketlocks/{id:long}", async (AppDbContext db, long id) =>
     await db.TicketLocks.FindAsync(id) is TicketLock u ? Results.Ok(u) : Results.NotFound());
 
@@ -476,14 +514,11 @@ app.MapPost("/buy", async (
     [FromBody] BuyTicketDto buyTicketDto
 ) =>
 {
-    var entry = await db.TimeTableEntries.FindAsync(buyTicketDto.EntryId);
+    var entry = await db.TimeTableEntries.Include(l => l.PricePolicy).Where(e => e.Id == buyTicketDto.EntryId).FirstAsync();
     if (entry == null) return Results.BadRequest();
 
     var policy = entry.PricePolicy;
-    if (policy == null)
-    {
-        policy = new PricePolicy();
-    }
+    policy ??= await db.PricePolicies.FindAsync((long) 1);
 
     if (buyTicketDto.PerkGroupId != null)
     {
@@ -493,7 +528,10 @@ app.MapPost("/buy", async (
         if (!policy.PerkGroups.Contains(selectedPerk)) return Results.BadRequest();
     }
 
-    var price = pricingService.CalculateTicketPrice(policy, entry.Train.SourceId, entry.Train.DestinationId);
+    var train = entry.Train;
+    train ??= await db.Trains.FindAsync(entry.TrainId);
+
+    var price = pricingService.CalculateTicketPrice(policy, train.SourceId, train.DestinationId);
 
     var lockRow = new TicketLock
     {
@@ -562,36 +600,74 @@ app.MapGet("/timetable/search", async (
 });
 
 
-app.MapPost("/pay/{lockId:long}", async (
-    AppDbContext db,
-    long lockId
+app.MapPost("/pay", async (
+    PayLocksRequest request,
+    ClaimsPrincipal user,
+    AppDbContext db
 ) =>
 {
-    var lockEntry = await db.TicketLocks.FindAsync(lockId);
-    if (lockEntry == null) return Results.NotFound();
+    var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
+    var accessLevelClaim = user.FindFirst("access_level");
 
-    lockEntry.Paid = true;
+    if (userIdClaim == null || accessLevelClaim == null)
+        return Results.Unauthorized();
 
-    db.Tickets.Add(new Ticket
+    var userId = long.Parse(userIdClaim.Value);
+    var accessLevel = int.Parse(accessLevelClaim.Value);
+
+    if (request.LockIds == null || request.LockIds.Count == 0)
+        return Results.BadRequest("No lock IDs provided.");
+
+    using var tx = await db.Database.BeginTransactionAsync();
+
+    try
     {
-        EntryId = lockEntry.EntryId,
-        UserId = lockEntry.UserId,
-        Used = false
-    });
+        var locks = await db.TicketLocks
+            .Where(l => request.LockIds.Contains(l.Id))
+            .ToListAsync();
 
-    db.Payments.Add(new Payment
+        if (locks.Count != request.LockIds.Count)
+            return Results.NotFound("One or more locks not found.");
+
+        foreach (var lockEntry in locks)
+        {
+            if (lockEntry.UserId != userId)
+                return Results.Forbid();
+
+            if (lockEntry.Paid)
+                continue;
+
+            lockEntry.Paid = true;
+
+            db.Tickets.Add(new Ticket
+            {
+                EntryId = lockEntry.EntryId,
+                UserId = lockEntry.UserId,
+                Used = false
+            });
+
+            db.Payments.Add(new Payment
+            {
+                LockId = lockEntry.Id,
+                Successful = true, // simulate successful payments
+                Sum = lockEntry.Sum,
+                InvoiceId = lockEntry.InvoiceId,
+                DateTime = DateTime.UtcNow
+            });
+        }
+
+        await db.SaveChangesAsync();
+        await tx.CommitAsync();
+
+        return Results.Ok();
+    }
+    catch
     {
-        LockId = lockEntry.Id,
-        Successful = true, // simulate succesful payments
-        Sum = lockEntry.Sum,
-        InvoiceId = lockEntry.InvoiceId,
-        DateTime = DateTime.UtcNow
-    });
-
-    await db.SaveChangesAsync();
-
-    return Results.Ok();
-});
+        await tx.RollbackAsync();
+        throw;
+    }
+})
+.RequireAuthorization();
 
 
 app.Run();

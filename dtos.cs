@@ -20,4 +20,5 @@ namespace CourseProject.Dtos
     public record RefreshTokenDto(
         string RefreshToken
     );
+    public record PayLocksRequest(List<long> LockIds);
 }

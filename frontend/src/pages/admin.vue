@@ -90,11 +90,12 @@
           entity="timetable"
           detailsBase="timetable"
           title="Time Table"
-          :headers="['Train','Departure','Arrival']"
-          :keys="['trainId','departure','arrival']"
-          :defaultModel="{ trainId:null, departure:'', arrival:'' }"
+          :headers="['Train','Departure','Arrival', 'Price Policy']"
+          :keys="['trainId','departure','arrival', 'pricePolicyId']"
+          :defaultModel="{ trainId:null, departure:'', arrival:'', pricePolicyId: null }"
           :fks="{
-            trainId: { entity: 'trains', label: t => `Train #${t.id}` }
+            trainId: { entity: 'trains', label: t => `Train #${t.id}` },
+            pricePolicyId: { entity: 'pricepolicies', label: t => `Policy #${t.id}` }
           }"
           :datetimes="['departure', 'arrival']"
           inactiveSwitch

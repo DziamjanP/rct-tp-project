@@ -29,7 +29,6 @@
         </v-col>
       </v-row-->
 
-      <!-- Perk group selection -->
       <v-row v-if="entry?.perkGroups?.length">
         <v-col cols="12" md="6">
           <v-autocomplete
@@ -43,7 +42,6 @@
         </v-col>
       </v-row>
 
-      <!-- Lock Ticket Button -->
       <v-row>
         <v-col cols="12">
           <v-btn
@@ -51,7 +49,7 @@
             :loading="loading"
             @click="lockTicket"
           >
-            Lock Ticket
+            Book Ticket
           </v-btn>
         </v-col>
       </v-row>
@@ -61,16 +59,16 @@
       Something went wrong
     </v-card>
 
-    <!-- Success Dialog -->
     <v-dialog v-model="successDialog" max-width="400">
       <v-card>
         <v-card-title class="headline">Ticket Locked!</v-card-title>
         <v-card-text>
-          Your ticket has been successfully locked.
+          Your ticket has been successfully booked, you have 30 minutes to pay for it. Pay for your tickets in the "My Tickets" page.
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn color="primary" @click="goToTickets">OK</v-btn>
+          <v-btn color="primary" @click="goToTickets">Pay Now</v-btn>
+          <v-btn color="primary" @click="successDialog=false">Later</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -179,7 +177,7 @@ async function lockTicket() {
       userId: auth.user?.id,
     }
     if (selectedPerkGroup.value) payload.perkGroupId = selectedPerkGroup.value
-    await api.create(`/buy/${entry.value.id}`, payload)
+    await api.create(`buy`, payload)
 
     successDialog.value = true
   } catch (err) {

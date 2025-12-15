@@ -169,7 +169,7 @@ export default {
   },
 
   createPayment<T = unknown, P = unknown>(payload: P): Promise<T> {
-    return api.post('/payments', payload).then(r => r.data)
+    return api.post('/pay', payload).then(r => r.data)
   },
 
   getTimeTable<T = unknown>(params?: Record<string, unknown>): Promise<T> {

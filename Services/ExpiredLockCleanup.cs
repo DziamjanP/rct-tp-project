@@ -6,7 +6,7 @@ namespace CourseProject.Data;
 public class ExpiredLockCleanup : BackgroundService
 {
     private readonly IServiceProvider _services;
-    private static readonly TimeSpan ExpireAfter = TimeSpan.FromMinutes(15);
+    private static readonly TimeSpan ExpireAfter = TimeSpan.FromMinutes(30);
 
     public ExpiredLockCleanup(IServiceProvider services)
     {

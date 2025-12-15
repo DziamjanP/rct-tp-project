@@ -32,7 +32,6 @@
     { to: '/tickets', title: 'My tickets'},
   ] : [
     { to: '/', title: 'Home'},
-    { to: '/admin', title: 'Admin'},
     { to: '/timetable', title: 'Timetable'},
     { to: '/tickets', title: 'My tickets'},
   ]) : [
