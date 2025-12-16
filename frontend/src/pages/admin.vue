@@ -127,6 +127,7 @@
             entryId: { entity: 'timetable', label: e => `#${e.id}: ${e.departure} → ${e.arrival}` },
             userId:  { entity: 'users', label: u => `${u.name} (${u.phone})` }
           }"
+          inactiveSwitch
           @error="showError"
         />
       </v-col>
@@ -143,6 +144,7 @@
             entryId: { entity: 'timetable', label: e => `#${e.id}` },
             userId:  { entity: 'users', label: u => u.phone }
           }"
+          inactiveSwitch
           @error="showError"
         />
       </v-col>

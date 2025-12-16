@@ -26,7 +26,7 @@
         </thead>
         <tbody>
           <tr v-for="item in items" :key="item.id">
-            <td v-for="k in keys" :key="k">{{ formatField(k, item[k]) }}</td>
+            <td v-for="k in keys" :key="k">{{ formatField(item, k) }}</td>
             <td>
               <v-btn small text variant="plain" color="error" @click="removeItem(item.id)">Delete</v-btn>
               <v-btn small text variant="plain" color="primary" @click="goToDetails(item)">View</v-btn>
@@ -180,7 +180,6 @@ const props = withDefaults(defineProps<Props>(), {
   fks: () => ({}),
   inactiveSwitch: false,
 })
-//const emit = defineEmits<{ edit: (payload: any) => void }>()
 
 const router = useRouter()
 
@@ -256,7 +255,7 @@ function saveDateTime() {
 
 async function load() {
   const ent = props.entity ?? 'unknown'
-  items.value = hideInactive.value ? await api.list(ent, { "admin_list": true, "after":  new Date().toISOString() }) : await api.list(ent)
+  items.value = hideInactive.value ? await api.list(ent, { "admin_list": true, "after":  new Date().toISOString(), "hide_inactive": hideInactive.value }) : await api.list(ent)
 }
 
 onMounted(() => {
@@ -296,10 +295,18 @@ async function createItem(item: AnyObj) {
 
 async function removeItem(id: ID) {
   await api.remove(props.entity ?? 'unknown', id)
-  await load()
+  await load() 
 }
 
-function formatField(field: string, val: any) {
+function formatField(item: AnyObj, field: string) {
+  let val = item[field]
+  if (field.endsWith("Id")) {
+    if (field.substring(0, field.length-2) in item && item[field.substring(0, field.length-2)] != null) {
+      if ("name" in item[field.substring(0, field.length-2)]) {
+        return `[${val}] ${item[field.substring(0, field.length-2)]["name"]}`
+      }
+    }
+  }
   if (!val || typeof val !== 'string') return val
   if (field.toLowerCase() === 'description') {
     return `${val.substring(0, 16)}...`

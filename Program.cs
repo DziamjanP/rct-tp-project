@@ -3,14 +3,11 @@ using CourseProject.Data;
 using CourseProject.Models;
 using CourseProject.Dtos;
 using CourseProject.Services;
-using System.Text.Json;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
-using System.Linq;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
-using System.IdentityModel.Tokens.Jwt;
 
 var builder = WebApplication.CreateBuilder(args);
 var conn = builder.Configuration.GetConnectionString("DefaultConnection") 
@@ -433,11 +430,11 @@ app.MapDelete("/timetable/{id:long}", async (AppDbContext db, long id) =>
 app.MapGet("/tickets", async (
     ClaimsPrincipal user,
     AppDbContext db,
-    bool admin_list = false
+    bool admin_list = false,
+    bool hide_inactive = false
 ) => {
     var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
     var accessLevelClaim = user.FindFirst("access_level");
-
 
     if (userIdClaim == null || accessLevelClaim == null)
         return Results.Unauthorized();
@@ -445,30 +442,32 @@ app.MapGet("/tickets", async (
     var userId = long.Parse(userIdClaim.Value);
     var accessLevel = int.Parse(accessLevelClaim.Value);
 
+    var query = db.Tickets
+        .Include(l => l.Entry)
+        .ThenInclude(e => e.Train)
+        .ThenInclude(t => t.Source)
+        .Include(l => l.Entry)
+        .ThenInclude(e => e.Train)
+        .ThenInclude(t => t.Destination)
+        .AsQueryable();
+
+    if (hide_inactive)
+    {
+        query = query.Where(t => t.Used == false).Where(t => t.Entry.Arrival > DateTime.UtcNow);
+    }
+
     if (admin_list && accessLevel > 0)
     {
+
         return Results.Ok(
-            await db.Tickets
-                .Include(l => l.Entry)
-                .ThenInclude(e => e.Train)
-                .ThenInclude(t => t.Source)
-                .Include(l => l.Entry)
-                .ThenInclude(e => e.Train)
-                .ThenInclude(t => t.Destination)
-                .OrderByDescending(l => l.Entry.Departure)
+            await query
                 .ToListAsync()
         );
     }
 
     return Results.Ok(
-        await db.Tickets
-            .Include(l => l.Entry)
-            .ThenInclude(e => e.Train)
-            .ThenInclude(t => t.Source)
-            .Include(l => l.Entry)
-            .ThenInclude(e => e.Train)
-            .ThenInclude(t => t.Destination)
-            .OrderByDescending(l => l.Entry.Departure)
+        await query
+            .Where(t => t.UserId == userId)
             .ToListAsync()
     );
 }).RequireAuthorization();
@@ -507,7 +506,8 @@ app.MapPost("/tickets/use/{id:long}", async (AppDbContext db, long id) =>
 app.MapGet("/ticketlocks", async (
     ClaimsPrincipal user,
     AppDbContext db,
-    bool admin_list = false
+    bool admin_list = false,
+    bool hide_inactive = false
 ) => {
     var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
     var accessLevelClaim = user.FindFirst("access_level");
@@ -519,18 +519,26 @@ app.MapGet("/ticketlocks", async (
     var userId = long.Parse(userIdClaim.Value);
     var accessLevel = int.Parse(accessLevelClaim.Value);
 
+    var query = db.TicketLocks
+    .AsQueryable();
+
+    if (hide_inactive)
+        query = query.Where(l => l.Paid == false);
+    
     if (admin_list && accessLevel > 0)
     {
+        
+
         return Results.Ok(
-            await db.TicketLocks
-                .Where(l => l.UserId == userId)
+            await query
                 .OrderByDescending(l => l.CreatedAt)
                 .ToListAsync()
         );
-        }
+    }
 
     return Results.Ok(
-        await db.TicketLocks
+        await query
+            .Where(l => l.UserId == userId)
             .Include(l => l.Entry)
             .ThenInclude(e => e.Train)
             .ThenInclude(t => t.Source)

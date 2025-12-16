@@ -30,7 +30,6 @@ namespace CourseProject.Services
             decimal fixedPrice = policy.FixedPrice ?? 0m;
 
             double km = _distanceCalculator.CalculateKmBetween(fromStationId, toStationId);
-            int stations = _distanceCalculator.CalculateStationsBetween(fromStationId, toStationId);
 
             double pricePerKm = policy.PricePerKm ?? 0.0;
 
