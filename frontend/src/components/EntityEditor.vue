@@ -13,7 +13,7 @@
             density="compact"
             class="mr-2 mt-0 mb-0"
           ></v-checkbox>
-          <v-btn color="primary" @click="openCreate">Add</v-btn>
+          <v-btn v-if="!editingDenied" color="primary" @click="openCreate">Add</v-btn>
         </div>
       </div>
 
@@ -28,7 +28,7 @@
           <tr v-for="item in items" :key="item.id">
             <td v-for="k in keys" :key="k">{{ formatField(item, k) }}</td>
             <td>
-              <v-btn small text variant="plain" color="error" @click="removeItem(item.id)">Delete</v-btn>
+              <v-btn v-if="!editingDenied" small text variant="plain" color="error" @click="removeItem(item.id)">Delete</v-btn>
               <v-btn small text variant="plain" color="primary" @click="goToDetails(item)">View</v-btn>
             </td>
           </tr>
@@ -168,6 +168,7 @@ interface Props {
   datetimes?: string[]
   fks?: Record<string, FkConfig>
   inactiveSwitch?: boolean
+  editingDenied?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -179,7 +180,10 @@ const props = withDefaults(defineProps<Props>(), {
   datetimes: () => [],
   fks: () => ({}),
   inactiveSwitch: false,
+  editingDenied: false,
 })
+
+const editingDenied = ref(props.editingDenied);
 
 const router = useRouter()
 
@@ -255,7 +259,7 @@ function saveDateTime() {
 
 async function load() {
   const ent = props.entity ?? 'unknown'
-  items.value = hideInactive.value ? await api.list(ent, { "admin_list": true, "after":  new Date().toISOString(), "hide_inactive": hideInactive.value }) : await api.list(ent)
+  items.value = hideInactive.value ? await api.list(ent, { "admin_list": true, "after":  new Date().toISOString(), "hide_inactive": hideInactive.value }) : await api.list(ent, { "admin_list": true })
 }
 
 onMounted(() => {

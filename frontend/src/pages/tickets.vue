@@ -573,10 +573,13 @@ async function refundTicket(ticket: Ticket) {
   }
 }
 
+if (!auth.isAuthenticated) {
+  router.push('/')
+}
 
 function logout() {
   auth.logout()
-  router.push('/')
+  router.go(0)
 }
 </script>
 

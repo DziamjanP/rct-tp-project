@@ -31,8 +31,12 @@ export const useAuthStore = defineStore('auth', {
   }),
   getters: {
     isAuthenticated: (state): boolean => !!state.token,
-    isAdmin: (state): boolean =>
+    accessLevel: (state): number =>
+      state.user?.accessLevel ?? (state.user as any)?.AccessLevel ?? 0,
+    isSupport: (state): boolean =>
       (state.user?.accessLevel ?? (state.user as any)?.AccessLevel ?? 0) > 0,
+    isAdmin: (state): boolean =>
+      (state.user?.accessLevel ?? (state.user as any)?.AccessLevel ?? 0) > 1,
   },
   actions: {
     async login(payload: { phone: string; password: string }): Promise<User> {

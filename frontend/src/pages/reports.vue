@@ -88,8 +88,10 @@
 </template>
 
 <script setup lang="ts">
+import router from '@/router';
 import { ref } from 'vue';
 import api from '@/api'
+import { useAuthStore } from '@/stores/auth'
 
 interface TopTrainDto {
   trainId: number;
@@ -111,6 +113,12 @@ const toDate = ref('');
 const topK = ref(5);
 
 const report = ref<PaymentReportDto | null>(null);
+
+const auth = useAuthStore();
+
+if (!auth.isAdmin) {
+  router.push('/');
+}
 
 async function fetchReport() {
   try {

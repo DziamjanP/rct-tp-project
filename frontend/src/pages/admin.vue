@@ -28,6 +28,7 @@
           :headers="['Name', 'City', 'Description']"
           :keys="['name','cityName','description']"
           :defaultModel="{ name:'', cityName:'', description:'' }"
+          :editingDenied="isSupport"
           @error="showError"
         />
       </v-col>
@@ -40,6 +41,7 @@
           :headers="['Name','Description']"
           :keys="['name','description']"
           :defaultModel="{ name:'', description:'' }"
+          :editingDenied="isSupport"
           @error="showError"
         />
       </v-col>
@@ -52,6 +54,7 @@
           :headers="['Name','Discount','Fixed Price']"
           :keys="['name','discount','fixedPrice']"
           :defaultModel="{ name:'', description:'', discount:0, fixedPrice:0 }"
+          :editingDenied="isSupport"
           @error="showError"
         />
       </v-col>
@@ -64,6 +67,7 @@
           :headers="['Per KM','Per Station','Fixed Price']"
           :keys="['pricePerKm','fixedPrice']"
           :defaultModel="{ pricePerKm:0, pricePerStation:0, fixedPrice:0 }"
+          :editingDenied="isSupport"
           @error="showError"
         />
       </v-col>
@@ -81,6 +85,7 @@
             destinationId: { entity: 'stations', label: s => `${s.name} (${s.cityName})` },
             typeId:        { entity: 'traintypes', label: t => t.name }
           }"
+          :editingDenied="isSupport"
           @error="showError"
         />
       </v-col>
@@ -98,6 +103,7 @@
             pricePolicyId: { entity: 'pricepolicies', label: t => `Policy #${t.id}` }
           }"
           :datetimes="['departure', 'arrival']"
+          :editingDenied="isSupport"
           inactiveSwitch
           @error="showError"
         />
@@ -111,6 +117,7 @@
           :headers="['Name','Phone']"
           :keys="['name','phone']"
           :defaultModel="{ name:'', surname:'', phone:'', password:'', salt:'' }"
+          :editingDenied="isSupport"
           @error="showError"
         />
       </v-col>
@@ -145,6 +152,7 @@
             userId:  { entity: 'users', label: u => u.phone }
           }"
           inactiveSwitch
+          :editingDenied="isSupport"
           @error="showError"
         />
       </v-col>
@@ -160,6 +168,7 @@
           :fks="{
             lockId: { entity: 'ticketlocks', label: l => `Lock #${l.id}` }
           }"
+          :editingDenied="isSupport"
           @error="showError"
         />
       </v-col>
@@ -172,13 +181,15 @@
 <script setup>
 import router from '@/router';
 import { useAuthStore } from '@/stores/auth';
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 
 const errorMessage = ref(null)
 
 const auth = useAuthStore();
 
-if (!auth.isAdmin) {
+const isSupport = computed(() => auth.isSupport);
+
+if (!auth.isSupport) {
   router.push('/');
 }
 

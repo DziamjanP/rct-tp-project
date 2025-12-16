@@ -3,7 +3,7 @@
     <v-row justify="center">
       <v-col cols="12" md="6">
         <v-card class="pa-4">
-          <div class="text-h5 mb-4">Register (dev only)</div>
+          <div class="text-h5 mb-4">Register</div>
 
           <v-text-field v-model="name" label="Name" />
           <v-text-field v-model="surname" label="Surname" />
@@ -40,13 +40,17 @@ const message = ref('')
 const error = ref('')
 const router = useRouter()
 
+if (auth.isAuthenticated) {
+  router.push('/')
+}
+
 async function submit() {
   try {
     error.value = ''
     const payload = { name: name.value, surname: surname.value, phone: phone.value, password: password.value }
     await auth.register(payload)
     message.value = 'Registered, redirecting you now...'
-    router.push('/');
+    router.go(0)
   } catch (e) {
     message.value = ''
     error.value = `Error: ${e.message ?? e}`

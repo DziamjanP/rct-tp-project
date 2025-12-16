@@ -25,20 +25,32 @@
   import { useAuthStore } from '@/stores/auth';
   const auth = useAuthStore()
 
-  const items = computed(() => auth.isAuthenticated ? (auth.isAdmin ? [
-    { to: '/', title: 'Home'},
-    { to: '/reports', title: 'Reports'},
-    { to: '/admin', title: 'Admin'},
-    { to: '/timetable', title: 'Timetable'},
-    { to: '/tickets', title: 'My tickets'},
-  ] : [
-    { to: '/', title: 'Home'},
-    { to: '/timetable', title: 'Timetable'},
-    { to: '/tickets', title: 'My tickets'},
-  ]) : [
-    { to: '/', title: 'Home'},
-    { to: '/login', title: 'Login'},
-    { to: '/register', title: 'Register'},
-    { to: '/timetable', title: 'Timetable'},
-  ]);
+  let privelege_map: Record<string, Array<Record<string, string>>> = {
+    "unknown": [
+        { to: '/', title: 'Home'},
+        { to: '/login', title: 'Login'},
+        { to: '/register', title: 'Register'},
+        { to: '/timetable', title: 'Timetable'},
+    ],
+    "user": [
+      { to: '/', title: 'Home'},
+      { to: '/timetable', title: 'Timetable'},
+      { to: '/tickets', title: 'My Profile'},
+    ],
+    "support": [
+      { to: '/', title: 'Home'},
+      { to: '/admin', title: 'Admin'},
+      { to: '/timetable', title: 'Timetable'},
+      { to: '/tickets', title: 'My Profile'},
+    ],
+    "admin": [
+      { to: '/', title: 'Home'},
+      { to: '/reports', title: 'Reports'},
+      { to: '/admin', title: 'Admin'},
+      { to: '/timetable', title: 'Timetable'},
+      { to: '/tickets', title: 'My Profile'},
+    ]
+  }
+  let access = (auth.isAuthenticated ? (["user", "support", "admin"][auth.accessLevel] ?? "unknown") : "unknown")
+  const items = computed(() => privelege_map[access])
 </script>

@@ -29,7 +29,7 @@ builder.Services.AddAuthentication(options =>
 })
 .AddJwtBearer(options =>
 {
-    options.RequireHttpsMetadata = false; // in dev true for prod
+    options.RequireHttpsMetadata = false; // in dev, should be true for prod
     options.SaveToken = true;
     options.TokenValidationParameters = new TokenValidationParameters
     {
@@ -85,6 +85,8 @@ builder.Services.AddScoped<ITicketPricingService, TicketPricingService>();
 
 string[] devOrigins =
 {
+    "http://localhost:5041",
+    "http://localhost:5042",
     "http://localhost:5173",
     "http://localhost:3000"
 };
@@ -137,6 +139,7 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
@@ -145,6 +148,7 @@ if (app.Environment.IsDevelopment())
         options.DocumentPath = "/openapi/v1.json";
     });
 }
+
 
 app.MapGet("/health", () => Results.Ok("OK"));
 
@@ -251,9 +255,13 @@ app.MapPost("/auth/refresh", async (AppDbContext db, JwtService jwt, RefreshToke
     });
 });
 
+
 app.MapGet("/users", async (AppDbContext db) => await db.Users.ToListAsync());
+
+
 app.MapGet("/users/{id:long}", async (AppDbContext db, long id) =>
     await db.Users.FindAsync(id) is User u ? Results.Ok(u) : Results.NotFound());
+
 
 app.MapDelete("/users/{id:long}", async (AppDbContext db, long id) =>
 {
@@ -265,16 +273,23 @@ app.MapDelete("/users/{id:long}", async (AppDbContext db, long id) =>
     return Results.NoContent();
 });
 
+
 // Stations
 app.MapGet("/stations", async (AppDbContext db) => await db.Stations.ToListAsync());
+
+
 app.MapGet("/stations/{id:long}", async (AppDbContext db, long id) =>
     await db.Stations.FindAsync(id) is Station u ? Results.Ok(u) : Results.NotFound());
+
+
 app.MapPost("/stations", async (AppDbContext db, Station s) =>
 {
     db.Stations.Add(s);
     await db.SaveChangesAsync();
     return Results.Created($"/stations/{s.Id}", s);
 }).RequireAuthorization("Admin");
+
+
 app.MapDelete("/stations/{id:long}", async (AppDbContext db, long id) =>
 {
 
@@ -286,16 +301,23 @@ app.MapDelete("/stations/{id:long}", async (AppDbContext db, long id) =>
     return Results.NoContent();
 }).RequireAuthorization("Admin");
 
+
 // Train types
 app.MapGet("/traintypes", async (AppDbContext db) => await db.TrainTypes.ToListAsync());
+
+
 app.MapGet("/traintypes/{id:long}", async (AppDbContext db, long id) =>
     await db.TrainTypes.FindAsync(id) is TrainType u ? Results.Ok(u) : Results.NotFound());
+
+
 app.MapPost("/traintypes", async (AppDbContext db, TrainType t) =>
 {
     db.TrainTypes.Add(t);
     await db.SaveChangesAsync();
     return Results.Created($"/traintypes/{t.Id}", t);
 }).RequireAuthorization("Admin");
+
+
 app.MapDelete("/traintypes/{id:long}", async (AppDbContext db, long id) =>
 {
     var t = await db.TrainTypes.FindAsync(id);
@@ -306,16 +328,23 @@ app.MapDelete("/traintypes/{id:long}", async (AppDbContext db, long id) =>
     return Results.NoContent();
 }).RequireAuthorization("Admin");
 
+
 // Trains
 app.MapGet("/trains", async (AppDbContext db) => await db.Trains.Include(t => t.Source).Include(t => t.Destination).Include(t => t.Type).ToListAsync());
+
+
 app.MapGet("/trains/{id:long}", async (AppDbContext db, long id) =>
     await db.Trains.FindAsync(id) is Train u ? Results.Ok(u) : Results.NotFound());
+
+
 app.MapPost("/trains", async (AppDbContext db, Train t) =>
 {
     db.Trains.Add(t);
     await db.SaveChangesAsync();
     return Results.Created($"/trains/{t.Id}", t);
 }).RequireAuthorization("Admin");
+
+
 app.MapDelete("/trains/{id:long}", async (AppDbContext db, long id) =>
 {
     var t = await db.Trains.FindAsync(id);
@@ -326,16 +355,23 @@ app.MapDelete("/trains/{id:long}", async (AppDbContext db, long id) =>
     return Results.NoContent();
 }).RequireAuthorization("Admin");
 
+
 // Price policies
-app.MapGet("/pricepolicies", async (AppDbContext db) => await db.PricePolicies.ToListAsync()).RequireAuthorization("Admin");
+app.MapGet("/pricepolicies", async (AppDbContext db) => await db.PricePolicies.ToListAsync()).RequireAuthorization("Support");
+
+
 app.MapGet("/pricepolicies/{id:long}", async (AppDbContext db, long id) =>
     await db.PricePolicies.FindAsync(id) is PricePolicy u ? Results.Ok(u) : Results.NotFound()).RequireAuthorization();
+
+
 app.MapPost("/pricepolicies", async (AppDbContext db, PricePolicy p) =>
 {
     db.PricePolicies.Add(p);
     await db.SaveChangesAsync();
     return Results.Created($"/pricepolicies/{p.Id}", p);
 }).RequireAuthorization("Admin");
+
+
 app.MapDelete("/pricepolicies/{id:long}", async (AppDbContext db, long id) =>
 {
     var p = await db.PricePolicies.FindAsync(id);
@@ -346,16 +382,23 @@ app.MapDelete("/pricepolicies/{id:long}", async (AppDbContext db, long id) =>
     return Results.NoContent();
 }).RequireAuthorization("Admin");
 
+
 // Perk groups
 app.MapGet("/perkgroups", async (AppDbContext db) => await db.PerkGroups.ToListAsync());
+
+
 app.MapGet("/perkgroups/{id:long}", async (AppDbContext db, long id) =>
     await db.PerkGroups.FindAsync(id) is PerkGroup u ? Results.Ok(u) : Results.NotFound());
+
+
 app.MapPost("/perkgroups", async (AppDbContext db, PerkGroup pg) =>
 {
     db.PerkGroups.Add(pg);
     await db.SaveChangesAsync();
     return Results.Created($"/perkgroups/{pg.Id}", pg);
 }).RequireAuthorization("Admin");
+
+
 app.MapDelete("/perkgroups/{id:long}", async (AppDbContext db, long id) =>
 {
     var pg = await db.PerkGroups.FindAsync(id);
@@ -365,6 +408,7 @@ app.MapDelete("/perkgroups/{id:long}", async (AppDbContext db, long id) =>
     await db.SaveChangesAsync();
     return Results.NoContent();
 }).RequireAuthorization("Admin");
+
 
 // Time table entries
 app.MapGet("/timetable", async (DateTime? after, AppDbContext db) =>
@@ -380,6 +424,7 @@ app.MapGet("/timetable", async (DateTime? after, AppDbContext db) =>
         .OrderBy(e => e.Departure)
         .ToListAsync();
 });
+
 
 app.MapGet("/timetable/{id:long}", async (
     AppDbContext db,
@@ -409,13 +454,17 @@ app.MapGet("/timetable/{id:long}", async (
         .FirstAsync();
 
     return Results.Ok(result);
-});
+}).RequireAuthorization();
+
+
 app.MapPost("/timetable", async (AppDbContext db, TimeTableEntry entry) =>
 {
     db.TimeTableEntries.Add(entry);
     await db.SaveChangesAsync();
     return Results.Created($"/timetable/{entry.Id}", entry);
 }).RequireAuthorization("Admin");
+
+
 app.MapDelete("/timetable/{id:long}", async (AppDbContext db, long id) =>
 {
     var e = await db.TimeTableEntries.FindAsync(id);
@@ -425,6 +474,7 @@ app.MapDelete("/timetable/{id:long}", async (AppDbContext db, long id) =>
     await db.SaveChangesAsync();
     return Results.NoContent();
 }).RequireAuthorization("Admin");
+
 
 // Tickets
 app.MapGet("/tickets", async (
@@ -472,14 +522,33 @@ app.MapGet("/tickets", async (
     );
 }).RequireAuthorization();
 
-app.MapGet("/tickets/{id:long}", async (AppDbContext db, long id) =>
-    await db.Tickets.FindAsync(id) is Ticket u ? Results.Ok(u) : Results.NotFound());
+
+app.MapGet("/tickets/{id:long}", async (AppDbContext db, ClaimsPrincipal user, long id) =>
+{
+    var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
+
+    if (userIdClaim == null)
+        return Results.Unauthorized();
+
+    var userId = long.Parse(userIdClaim.Value);
+
+    var ticket = await db.Tickets.FindAsync(id);
+    if (ticket is not null && ticket.UserId == userId)
+    {
+        return Results.Ok(ticket);
+    }
+    return Results.NotFound();
+}).RequireAuthorization();
+
+
 app.MapPost("/tickets", async (AppDbContext db, Ticket t) =>
 {
     db.Tickets.Add(t);
     await db.SaveChangesAsync();
     return Results.Created($"/tickets/{t.Id}", t);
 }).RequireAuthorization("Support");
+
+
 app.MapDelete("/tickets/{id:long}", async (AppDbContext db, long id) =>
 {
     var t = await db.Tickets.FindAsync(id);
@@ -489,6 +558,7 @@ app.MapDelete("/tickets/{id:long}", async (AppDbContext db, long id) =>
     await db.SaveChangesAsync();
     return Results.NoContent();
 }).RequireAuthorization("Support");
+
 
 app.MapPost("/tickets/use/{id:long}", async (AppDbContext db, long id) =>
 {
@@ -501,6 +571,7 @@ app.MapPost("/tickets/use/{id:long}", async (AppDbContext db, long id) =>
     }
     return Results.NotFound();
 }).RequireAuthorization("Inspector", "Admin");
+
 
 // TicketLocks
 app.MapGet("/ticketlocks", async (
@@ -549,8 +620,10 @@ app.MapGet("/ticketlocks", async (
             .ToListAsync()
     );
 }).RequireAuthorization();
+
+
 app.MapGet("/ticketlocks/{id:long}", async (AppDbContext db, long id) =>
-    await db.TicketLocks.FindAsync(id) is TicketLock u ? Results.Ok(u) : Results.NotFound());
+    await db.TicketLocks.FindAsync(id) is TicketLock u ? Results.Ok(u) : Results.NotFound()).RequireAuthorization();
 
 app.MapDelete("/ticketlocks/{id:long}", async (AppDbContext db, long id) =>
 {
@@ -560,12 +633,14 @@ app.MapDelete("/ticketlocks/{id:long}", async (AppDbContext db, long id) =>
     db.TicketLocks.Remove(l);
     await db.SaveChangesAsync();
     return Results.NoContent();
-});
+}).RequireAuthorization();
+
 
 // Payments
-app.MapGet("/payments", async (AppDbContext db) => await db.Payments.ToListAsync());
+app.MapGet("/payments", async (AppDbContext db) => await db.Payments.ToListAsync()).RequireAuthorization();
+
 app.MapGet("/payments/{id:long}", async (AppDbContext db, long id) =>
-    await db.Payments.FindAsync(id) is Payment u ? Results.Ok(u) : Results.NotFound());
+    await db.Payments.FindAsync(id) is Payment u ? Results.Ok(u) : Results.NotFound()).RequireAuthorization();
 
 app.MapDelete("/payments/{id:long}", async (AppDbContext db, long id) =>
 {
@@ -617,6 +692,7 @@ app.MapGet("/price", async (
     return Results.Ok(new PriceEstimateResult((long) price));
 });
 
+
 app.MapPost("/buy", async (
     AppDbContext db,
     ITicketPricingService pricingService,
@@ -666,7 +742,8 @@ app.MapPost("/buy", async (
     await db.SaveChangesAsync();
 
     return Results.Ok(lockRow);
-});
+}).RequireAuthorization();
+
 
 app.MapPost("/refund/{ticketId:long}", async (
     AppDbContext db,
@@ -679,7 +756,8 @@ app.MapPost("/refund/{ticketId:long}", async (
     db.Tickets.Remove(t);
     await db.SaveChangesAsync();
     return Results.Ok();
-});
+}).RequireAuthorization();
+
 
 app.MapGet("/timetable/search", async (
     AppDbContext db,
@@ -798,9 +876,7 @@ app.MapPost("/pay", async (
         await tx.RollbackAsync();
         throw;
     }
-})
-.RequireAuthorization();
-
+}).RequireAuthorization();
 
 
 app.MapGet("/report", async (
