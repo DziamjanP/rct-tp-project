@@ -588,7 +588,11 @@ app.MapGet("/price", async (
     if (entry == null) return Results.BadRequest();
 
     var policy = entry.PricePolicy;
-    policy ??= await db.PricePolicies.FindAsync((long) 1);
+    policy = await db.PricePolicies.FindAsync((long) 1);
+    if (policy == null)
+    {
+        return Results.BadRequest("bad privacy policy for ticket, contact support");
+    }
 
     PerkGroup? selectedPerk = null;
 
@@ -601,7 +605,12 @@ app.MapGet("/price", async (
     }
 
     var train = entry.Train;
-    train ??= await db.Trains.FindAsync(entry.TrainId);
+    train = await db.Trains.FindAsync(entry.TrainId);
+    
+    if (train == null)
+    {
+        return Results.BadRequest("bad train for ticket, contact support");
+    }
 
     var price = pricingService.CalculateTicketPrice(policy, train.SourceId, train.DestinationId, selectedPerk);
 
@@ -617,7 +626,12 @@ app.MapPost("/buy", async (
     if (entry == null) return Results.BadRequest();
 
     var policy = entry.PricePolicy;
-    policy ??= await db.PricePolicies.FindAsync((long) 1);
+    policy = await db.PricePolicies.FindAsync((long) 1);
+
+    if (policy == null)
+    {
+        return Results.BadRequest("bad privacy policy for ticket, contact support");
+    }
 
     PerkGroup? selectedPerk = null;
 
@@ -630,7 +644,11 @@ app.MapPost("/buy", async (
     }
 
     var train = entry.Train;
-    train ??= await db.Trains.FindAsync(entry.TrainId);
+    train = await db.Trains.FindAsync(entry.TrainId);
+    if (train == null)
+    {
+        return Results.BadRequest("bad train for ticket, contact support");
+    }
 
     var price = pricingService.CalculateTicketPrice(policy, train.SourceId, train.DestinationId, selectedPerk);
 

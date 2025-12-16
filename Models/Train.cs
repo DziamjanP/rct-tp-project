@@ -9,9 +9,9 @@ public class Train
     public long DestinationId { get; set; }
     public long TypeId { get; set; }
 
-    public Station? Source { get; set; }
-    public Station? Destination { get; set; }
-    public TrainType? Type { get; set; }
+    public Station Source { get; set; } = null!;
+    public Station Destination { get; set; } = null!;
+    public TrainType Type { get; set; } = null!;
     [JsonIgnore]
     public ICollection<TimeTableEntry>? TimeTableEntries { get; set; }
 }

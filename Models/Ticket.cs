@@ -7,6 +7,6 @@ public class Ticket
     public long UserId { get; set; }
     public bool Used { get; set; }
 
-    public TimeTableEntry? Entry { get; set; }
-    public User? User { get; set; }
+    public TimeTableEntry Entry { get; set; } = null!;
+    public User User { get; set; } = null!;
 }

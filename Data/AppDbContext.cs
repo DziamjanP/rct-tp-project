@@ -67,9 +67,6 @@ public class AppDbContext : DbContext
             eb.Property(e => e.Arrival).IsRequired();
             eb.HasOne(e => e.Train).WithMany(t => t.TimeTableEntries).HasForeignKey(e => e.TrainId).OnDelete(DeleteBehavior.Cascade);
             eb.HasOne(e => e.PricePolicy).WithMany(p => p.TimeTableEntries).HasForeignKey(e => e.PricePolicyId).OnDelete(DeleteBehavior.SetNull);
-
-            // map StopInfo to jsonb
-            eb.Property(e => e.StopInfo).HasColumnType("jsonb");
         });
 
         modelBuilder.Entity<PerkGroup>(eb =>

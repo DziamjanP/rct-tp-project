@@ -10,11 +10,8 @@ public class TimeTableEntry
     public DateTime Departure { get; set; }
     public DateTime Arrival { get; set; }
 
-    // temporary, will add M:N in future
-    public JsonDocument? StopInfo { get; set; }
+    public long PricePolicyId { get; set; }
 
-    public long? PricePolicyId { get; set; }
-
-    public Train? Train { get; set; }
-    public PricePolicy? PricePolicy { get; set; }
+    public Train Train { get; set; } = null!;
+    public PricePolicy PricePolicy { get; set; } = null!;
 }
