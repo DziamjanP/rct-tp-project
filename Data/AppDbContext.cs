@@ -4,11 +4,8 @@ using System.Text.Json;
 
 namespace CourseProject.Data;
 
-public class AppDbContext : DbContext
+public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
 {
-    public AppDbContext(DbContextOptions<AppDbContext> options)
-        : base(options) { }
-
     public DbSet<User> Users => Set<User>();
     public DbSet<Station> Stations => Set<Station>();
     public DbSet<TrainType> TrainTypes => Set<TrainType>();
@@ -55,9 +52,9 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Train>(eb =>
         {
             eb.HasKey(t => t.Id);
-            eb.HasOne(t => t.Source).WithMany(s => s.SourceTrains).HasForeignKey(t => t.SourceId).OnDelete(DeleteBehavior.Restrict);
-            eb.HasOne(t => t.Destination).WithMany(s => s.DestinationTrains).HasForeignKey(t => t.DestinationId).OnDelete(DeleteBehavior.Restrict);
-            eb.HasOne(t => t.Type).WithMany(tt => tt.Trains).HasForeignKey(t => t.TypeId).OnDelete(DeleteBehavior.Restrict);
+            eb.HasOne(t => t.Source).WithMany(s => s.SourceTrains).HasForeignKey(t => t.SourceId).OnDelete(DeleteBehavior.Cascade);
+            eb.HasOne(t => t.Destination).WithMany(s => s.DestinationTrains).HasForeignKey(t => t.DestinationId).OnDelete(DeleteBehavior.Cascade);
+            eb.HasOne(t => t.Type).WithMany(tt => tt.Trains).HasForeignKey(t => t.TypeId).OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<TimeTableEntry>(eb =>
@@ -66,7 +63,7 @@ public class AppDbContext : DbContext
             eb.Property(e => e.Departure).IsRequired();
             eb.Property(e => e.Arrival).IsRequired();
             eb.HasOne(e => e.Train).WithMany(t => t.TimeTableEntries).HasForeignKey(e => e.TrainId).OnDelete(DeleteBehavior.Cascade);
-            eb.HasOne(e => e.PricePolicy).WithMany(p => p.TimeTableEntries).HasForeignKey(e => e.PricePolicyId).OnDelete(DeleteBehavior.SetNull);
+            eb.HasOne(e => e.PricePolicy).WithMany(p => p.TimeTableEntries).HasForeignKey(e => e.PricePolicyId).OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<PerkGroup>(eb =>
