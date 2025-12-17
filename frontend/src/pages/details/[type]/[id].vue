@@ -52,9 +52,19 @@ import api from '@/api'
 
 const route = useRoute()
 
-// route params exposed by unplugin auto-routing
-const type = computed(() => route.params.type as string)
-const id   = computed(() => route.params.id as string)
+const id = computed(() => {
+  if ('id' in route.params) {
+    return route.params.id as string
+  }
+  return null
+})
+
+const type = computed(() => {
+  if ('type' in route.params) {
+    return route.params.type as string
+  }
+  return null
+})
 
 const loading = ref(false)
 const error = ref<string | null>(null)
@@ -69,7 +79,7 @@ async function reload() {
   error.value = null
 
   try {
-    item.value = await api.get(type.value, id.value)
+    item.value = await api.get(type.value ?? "unknown", id.value ?? "")
   }
   catch (e: any) {
     error.value = e?.message ?? String(e) ?? 'Failed to load'

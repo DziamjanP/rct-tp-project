@@ -149,20 +149,12 @@ app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 
-//app.MapControllers();
+app.UseDefaultFiles();
+app.UseStaticFiles();
 
-app.MapAuth();
-app.MapUsers();
-app.MapPayments();
-app.MapPricePolicies();
-app.MapPerkGroups();
-app.MapTrainTypes();
-app.MapTrains();
-app.MapTimeTableEntries();
-app.MapTicketBookings();
-app.MapStations();
-app.MapTickets();
-app.MapReports();
+app.MapGroup("/api").MapAllApiEndpoints();
+
+app.MapFallbackToFile("/index.html");
 
 app.MapGet("/health", () => Results.Ok("OK"));
 

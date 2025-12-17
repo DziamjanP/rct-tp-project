@@ -1,5 +1,5 @@
 import axios, { type AxiosResponse, type InternalAxiosRequestConfig } from 'axios'
-const BASE = import.meta.env.VITE_API_BASE ?? 'http://localhost:5000'
+const BASE = import.meta.env.VITE_API_BASE ?? 'http://localhost:5000/api'
 const api = axios.create({ baseURL: BASE, headers: { 'Content-Type': 'application/json' } })
 
 api.interceptors.request.use((config: InternalAxiosRequestConfig) => {

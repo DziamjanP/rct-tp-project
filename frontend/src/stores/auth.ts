@@ -56,6 +56,7 @@ export const useAuthStore = defineStore('auth', {
         localStorage.setItem('refreshToken', res.refreshToken)
         this.token = res.accessToken
         this.user = user
+        await this.updateUser();
         return user
       } finally {
         this.loading = false
@@ -86,9 +87,9 @@ export const useAuthStore = defineStore('auth', {
       return user
     },
     async updateUser() {
-      const user: User = await api.get('user', this.user.id)
+      const user: User = await api.get('users', this.user.id)
       this.user = user
-      localStorage.setItem('user', JSON.stringify(user))
+      localStorage.setItem('users', JSON.stringify(user))
     }
   },
 })

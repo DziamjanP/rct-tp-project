@@ -21,11 +21,6 @@
                   <v-list-item-subtitle>{{ user?.phone }}</v-list-item-subtitle>
                 </v-list-item>
 
-                <v-list-item>
-                  <v-list-item-title>Email</v-list-item-title>
-                  <v-list-item-subtitle> email will go here... </v-list-item-subtitle>
-                </v-list-item>
-
                 <v-list-item v-if="isAdmin">
                   <v-list-item-title>Admin Status</v-list-item-title>
                   <v-list-item-subtitle>Yes</v-list-item-subtitle>
@@ -48,7 +43,7 @@
               grow
             >
               <v-tab value="tickets">Tickets</v-tab>
-              <v-tab value="locks">Locks</v-tab>
+              <v-tab value="locks">Bookings</v-tab>
               <v-tab value="archive">Ticket Archive</v-tab>
               <v-tab value="payments">Payment History</v-tab>
             </v-tabs>
@@ -217,10 +212,10 @@
               </v-card>
             </v-card-text>
 
-            <v-card-text v-else-if="activeTab === 'payments'">
+            <!--v-card-text v-else-if="activeTab === 'payments'">
               <h3>Payment History</h3>
               <p>Payment history content here.</p>
-            </v-card-text>
+            </v-card-text-->
           </v-card>
         </v-col>
       </v-row>
