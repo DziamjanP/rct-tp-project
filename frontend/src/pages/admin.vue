@@ -116,8 +116,9 @@
           title="Users"
           :headers="['Name','Phone']"
           :keys="['name','phone']"
-          :defaultModel="{ name:'', surname:'', phone:'', password:'', salt:'' }"
+          :defaultModel="{ name:'', surname:'', phone:'', passport:'' }"
           :editingDenied="isSupport"
+          editable
           @error="showError"
         />
       </v-col>

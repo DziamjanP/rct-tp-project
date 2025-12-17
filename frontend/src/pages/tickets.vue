@@ -455,6 +455,7 @@ onMounted(() => {
     now.value = Date.now()
   }, 1000);
   loadTickets();
+  auth.updateUser();
 })
 
 onUnmounted(() => {

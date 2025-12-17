@@ -28,6 +28,7 @@
           <tr v-for="item in items" :key="item.id">
             <td v-for="k in keys" :key="k">{{ formatField(item, k) }}</td>
             <td>
+              <v-btn v-if="editable" small text variant="plain" @click="openEdit(item.id)">Edit</v-btn>
               <v-btn v-if="!editingDenied" small text variant="plain" color="error" @click="removeItem(item.id)">Delete</v-btn>
               <v-btn small text variant="plain" color="primary" @click="goToDetails(item)">View</v-btn>
             </td>
@@ -162,28 +163,29 @@ interface Props {
   title?: string
   headers?: any[]
   keys?: string[]
-  createTitle?: string
   defaultModel?: Record<string, any>
   detailsBase?: string | null
   datetimes?: string[]
   fks?: Record<string, FkConfig>
   inactiveSwitch?: boolean
   editingDenied?: boolean
+  editable?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   headers: () => [],
   keys: () => [],
-  createTitle: 'Create',
   defaultModel: () => ({}),
   detailsBase: null,
   datetimes: () => [],
   fks: () => ({}),
   inactiveSwitch: false,
   editingDenied: false,
+  editable: false,
 })
 
 const editingDenied = ref(props.editingDenied);
+const editable = ref(props.editable);
 
 const router = useRouter()
 
@@ -205,6 +207,10 @@ const dtDialog = ref<boolean>(false)
 const dtKey = ref<string | null>(null)
 const dtDate = ref<string | null>(null)
 const dtTime = ref<string>('12:00')
+
+let editMode = false;
+
+const createTitle = computed(() => editMode ? 'Edit' : 'Create')
 
 watch(showCreate, async (opened) => {
   if (!opened) return
@@ -269,6 +275,7 @@ onMounted(() => {
 function openCreate() {
   model.value = { ...(props.defaultModel ?? {}) }
   showCreate.value = true
+  editMode = false
 }
 
 function updateModel(p: AnyObj) {
@@ -282,7 +289,12 @@ async function save() {
     }
   })
 
-  await createItem(toRaw(model.value))
+  if (editMode) {
+    await editItem(toRaw(model.value))
+  }
+  else {
+    await createItem(toRaw(model.value))
+  }
   showCreate.value = false
   await load()
 }
@@ -300,6 +312,21 @@ async function createItem(item: AnyObj) {
 async function removeItem(id: ID) {
   await api.remove(props.entity ?? 'unknown', id)
   await load() 
+}
+
+async function editItem(item: AnyObj) {
+  try {
+    await api.update(props.entity ?? 'unknown', item.id, item)
+    errEmit('refresh')
+  } catch (err) {
+    errEmit('error', err)
+  }
+}
+
+async function openEdit(id: ID) {
+  model.value = { ...(await api.get(props.entity ?? "unknown", id) ?? {}) }
+  showCreate.value = true
+  editMode = true
 }
 
 function formatField(item: AnyObj, field: string) {

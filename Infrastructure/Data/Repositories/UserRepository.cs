@@ -1,5 +1,6 @@
 using CourseProject.Application.Interfaces.Repositories;
 using CourseProject.Data;
+using CourseProject.Dtos;
 using CourseProject.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -27,6 +28,35 @@ public class UserRepository : IUserRepository
     {
         _db.Users.Add(user);
         await Task.CompletedTask;
+    }
+    public async Task UpdateAsync(long userId, UserUpdateDto userDto)
+    {
+        var user = _db.Users.SingleOrDefault(u => u.Id == userId);
+        if (user != null)
+        {
+            if (userDto.Name != null)
+            {
+                user.Name = userDto.Name;
+            }
+            if (userDto.Surname != null)
+            {
+                user.Surname = userDto.Surname;
+            }
+            if (userDto.Phone != null)
+            {
+                user.Phone = userDto.Phone;
+            }
+            if (userDto.Passport != null)
+            {
+                user.Passport = userDto.Passport;
+            }
+            if (userDto.AccessLevel != null)
+            {
+                user.AccessLevel = userDto.AccessLevel ?? 0;
+            }
+            _db.Users.Update(user);
+            _db.SaveChanges();
+        }
     }
 
     public async Task DeleteAsync(User user)

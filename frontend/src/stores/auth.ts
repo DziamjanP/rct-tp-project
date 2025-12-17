@@ -85,5 +85,10 @@ export const useAuthStore = defineStore('auth', {
       this.user = user
       return user
     },
+    async updateUser() {
+      const user: User = await api.get('user', this.user.id)
+      this.user = user
+      localStorage.setItem('user', JSON.stringify(user))
+    }
   },
 })
