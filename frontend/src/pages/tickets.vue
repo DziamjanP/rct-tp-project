@@ -99,7 +99,7 @@
                 align="center"
                 class="pa-3"
               >
-                <h3>Locks</h3>
+                <h3>Bookings</h3>
                 <v-checkbox
                   label="Hide inactive"
                   v-model="hideInactiveLocks"

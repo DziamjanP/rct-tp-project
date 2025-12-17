@@ -144,7 +144,7 @@
         <EntityEditor
           entity="ticketlocks"
           detailsBase="ticketlocks"
-          title="Ticket Locks"
+          title="Ticket Bookings"
           :headers="['Entry','User','Paid','Sum']"
           :keys="['entryId','userId','paid','sum']"
           :defaultModel="{ entryId:null, userId:null, invoiceId:'', paid:false, sum:0 }"
@@ -163,8 +163,8 @@
           entity="payments"
           detailsBase="payments"
           title="Payments"
-          :headers="['Lock','Success','Sum']"
-          :keys="['lockId','successful','sum']"
+          :headers="['Booking','Success','Sum']"
+          :keys="['BookingId','successful','sum']"
           :defaultModel="{ lockId:null, invoiceId:'', successful:false, sum:0 }"
           :fks="{
             lockId: { entity: 'ticketlocks', label: l => `Lock #${l.id}` }

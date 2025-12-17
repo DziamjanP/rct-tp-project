@@ -82,7 +82,7 @@
 
     <v-dialog v-model="successDialog" max-width="400">
       <v-card>
-        <v-card-title class="headline">Ticket Locked!</v-card-title>
+        <v-card-title class="headline">Ticket Booked!</v-card-title>
         <v-card-text>
           Your ticket has been successfully booked, you have 30 minutes to pay for it. Pay for your tickets in the "My Tickets" page.
         </v-card-text>
