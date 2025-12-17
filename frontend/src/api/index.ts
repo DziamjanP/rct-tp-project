@@ -178,7 +178,7 @@ export default {
   },
 
   refundPayment<T = unknown, P = unknown>(ticketId: ID, payload: P): Promise<T> {
-    return api.post(`/refund/${ticketId}`, payload).then(r => r.data)
+    return api.post(`/tickets/refund/${ticketId}`, payload).then(r => r.data)
   },
 
   getTimeTable<T = unknown>(params?: Record<string, unknown>): Promise<T> {

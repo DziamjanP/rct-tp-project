@@ -1,6 +1,6 @@
 namespace CourseProject.Models;
 
-public class TicketLock
+public class TicketBooking
 {
     public long Id { get; set; }
     public long EntryId { get; set; }

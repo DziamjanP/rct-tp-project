@@ -141,7 +141,7 @@ interface Entry {
 }
 
 interface TimeTableResponse {
-  entryId: number
+  id: number
   trainId: number
   trainType: string
   departureStationName: string
@@ -184,7 +184,7 @@ onMounted(async () => {
   let ttEntry: TimeTableResponse = await api.get('timetable', entryId)
   if (ttEntry) {
     entry.value = {
-      id: ttEntry.entryId,
+      id: ttEntry.id,
       departureStationName: ttEntry.departureStationName,
       arrivalStationName: ttEntry.arrivalStationName,
       departureTime: ttEntry.departureTime,
@@ -230,6 +230,7 @@ async function lockTicket() {
       entryId: entry.value.id,
       userId: auth.user?.id,
     }
+    console.log(entry);
     if (selectedPerkGroup.value) payload.perkGroupId = selectedPerkGroup.value.id
     await api.create(`buy`, payload)
 

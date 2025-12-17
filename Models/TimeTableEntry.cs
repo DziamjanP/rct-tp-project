@@ -7,8 +7,8 @@ public class TimeTableEntry
 {
     public long Id { get; set; }
     public long TrainId { get; set; }
-    public DateTime Departure { get; set; }
-    public DateTime Arrival { get; set; }
+    public DateTime DepartureTime { get; set; }
+    public DateTime ArrivalTime { get; set; }
 
     public long PricePolicyId { get; set; }
 

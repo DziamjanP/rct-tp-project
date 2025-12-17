@@ -15,7 +15,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<PricePolicy> PricePolicies => Set<PricePolicy>();
     public DbSet<PricePolicyPerkGroup> PricePolicyPerkGroups => Set<PricePolicyPerkGroup>();
     public DbSet<Ticket> Tickets => Set<Ticket>();
-    public DbSet<TicketLock> TicketLocks => Set<TicketLock>();
+    public DbSet<TicketBooking> TicketBookings => Set<TicketBooking>();
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
@@ -60,8 +60,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         modelBuilder.Entity<TimeTableEntry>(eb =>
         {
             eb.HasKey(e => e.Id);
-            eb.Property(e => e.Departure).IsRequired();
-            eb.Property(e => e.Arrival).IsRequired();
+            eb.Property(e => e.DepartureTime).IsRequired();
+            eb.Property(e => e.ArrivalTime).IsRequired();
             eb.HasOne(e => e.Train).WithMany(t => t.TimeTableEntries).HasForeignKey(e => e.TrainId).OnDelete(DeleteBehavior.Cascade);
             eb.HasOne(e => e.PricePolicy).WithMany(p => p.TimeTableEntries).HasForeignKey(e => e.PricePolicyId).OnDelete(DeleteBehavior.Cascade);
         });
@@ -112,11 +112,11 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             eb.Property(t => t.Used).HasDefaultValue(false);
         });
 
-        modelBuilder.Entity<TicketLock>(eb =>
+        modelBuilder.Entity<TicketBooking>(eb =>
         {
             eb.HasKey(l => l.Id);
             eb.HasOne(l => l.Entry).WithMany().HasForeignKey(l => l.EntryId).OnDelete(DeleteBehavior.Cascade);
-            eb.HasOne(l => l.User).WithMany(u => u.TicketLocks).HasForeignKey(l => l.UserId).OnDelete(DeleteBehavior.Cascade);
+            eb.HasOne(l => l.User).WithMany(u => u.TicketBookings).HasForeignKey(l => l.UserId).OnDelete(DeleteBehavior.Cascade);
             eb.Property(l => l.InvoiceId).HasMaxLength(64);
             eb.Property(l => l.Paid).HasDefaultValue(false);
             eb.Property(l => l.Sum).HasColumnType("numeric");
@@ -125,7 +125,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         modelBuilder.Entity<Payment>(eb =>
         {
             eb.HasKey(p => p.Id);
-            eb.HasOne(p => p.Lock).WithMany().HasForeignKey(p => p.LockId).OnDelete(DeleteBehavior.Cascade);
+            eb.HasOne(p => p.Lock).WithMany().HasForeignKey(p => p.BookingId).OnDelete(DeleteBehavior.Cascade);
             eb.Property(p => p.InvoiceId).HasMaxLength(64);
             eb.Property(p => p.Successful).HasDefaultValue(false);
             eb.Property(p => p.DateTime).IsRequired();

@@ -189,7 +189,7 @@ const auth = useAuthStore();
 
 const isSupport = computed(() => auth.isSupport);
 
-if (!auth.isSupport) {
+if (auth.accessLevel < 1) {
   router.push('/');
 }
 

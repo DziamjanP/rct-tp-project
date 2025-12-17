@@ -83,9 +83,9 @@
                     </div>
 
                     <div class="text-body-2 text-grey">
-                      {{ formatDateTime(ticket.entry.departure) }}
+                      {{ formatDateTime(ticket.entry.departureTime) }}
                       —
-                      {{ formatDateTime(ticket.entry.arrival) }}
+                      {{ formatDateTime(ticket.entry.arrivalTime) }}
                     </div>
                   </v-col>
 
@@ -135,9 +135,9 @@
                     </div>
 
                     <div class="text-body-2 text-grey">
-                      {{ formatDateTime(lock.entry.departure) }}
+                      {{ formatDateTime(lock.entry.departureTime) }}
                       —
-                      {{ formatDateTime(lock.entry.arrival) }}
+                      {{ formatDateTime(lock.entry.arrivalTime) }}
                     </div>
                   </v-col>
 
@@ -290,9 +290,9 @@
         </div>
 
         <div class="text-body-2 text-grey mb-3">
-          {{ formatDateTime(selectedLock.entry.departure) }}
+          {{ formatDateTime(selectedLock.entry.departureTime) }}
           —
-          {{ formatDateTime(selectedLock.entry.arrival) }}
+          {{ formatDateTime(selectedLock.entry.arrivalTime) }}
         </div>
 
         <v-divider class="my-2" />
@@ -549,7 +549,7 @@ function openPayment(locks: TicketLock[]) {
 async function confirmPayment() {
   try {
     await api.createPayment({
-      lockIds: selectedLocks.value.map(l => l.id)
+      BookingIds: selectedLocks.value.map(l => l.id)
     })
     paymentDialog.value = false
     await loadLocks()

@@ -24,13 +24,13 @@ public class ExpiredLockCleanup : BackgroundService
 
             var expiry = DateTime.UtcNow.Subtract(ExpireAfter);
 
-            List<TicketLock> expiredLocks = await db.TicketLocks
+            List<TicketBooking> expiredLocks = await db.TicketBookings
                 .Where(l => !l.Paid && l.CreatedAt < expiry)
                 .ToListAsync(cancellationToken: token);
 
             if (expiredLocks.Count > 0)
             {
-                db.TicketLocks.RemoveRange(expiredLocks);
+                db.TicketBookings.RemoveRange(expiredLocks);
                 await db.SaveChangesAsync(token);
             }
         }

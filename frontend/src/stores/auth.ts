@@ -34,7 +34,7 @@ export const useAuthStore = defineStore('auth', {
     accessLevel: (state): number =>
       state.user?.accessLevel ?? (state.user as any)?.AccessLevel ?? 0,
     isSupport: (state): boolean =>
-      (state.user?.accessLevel ?? (state.user as any)?.AccessLevel ?? 0) > 0,
+      (state.user?.accessLevel ?? (state.user as any)?.AccessLevel ?? 0) == 0,
     isAdmin: (state): boolean =>
       (state.user?.accessLevel ?? (state.user as any)?.AccessLevel ?? 0) > 1,
   },
